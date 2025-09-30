@@ -1,0 +1,48 @@
+{% extends 'dashboard/main/main.html' %}
+{% load static %}
+{% block content %}
+    {% block title %}App Settings - Owasp Wafcontrol{% endblock %}
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">Application Settings</h4>
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                            {% endfor %}
+
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="row">
+                                    {% for key, data in settings.items %}
+                                        <div class="col-md-6 mb-3">
+                                            <label for="{{ key }}">
+                                                {{ key }}
+                                                {% if data.description %}
+                                                    <small class="text-muted d-block">{{ data.description }}</small>
+                                                {% endif %}
+                                            </label>
+                                            <input type="text" name="{{ key }}" class="form-control"
+                                                   value="{{ data.value }}">
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-success">Save Settings</button>
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

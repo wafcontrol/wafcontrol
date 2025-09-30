@@ -1,0 +1,96 @@
+{% extends 'dashboard/main/main.html' %}
+
+{% block content %}
+    {% block title %}Rule Viewer - Owasp Wafcontrol{% endblock %}
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+
+
+            <div class="row mb-4">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h5 class="card-title text-primary">Rules in: {{ filename }} (CRS
+                                    v{{ crs_version }})</h5>
+                            </div>
+                            <a href="{% url 'wafinstaller:categorized_files' %}"
+                               class="btn btn-sm btn-outline-secondary">← Back to Categories</a>
+                        </div>
+                        <div class="iq-card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>ID</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                        <th>View</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for rule in rules %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ rule.id }}</td>
+                                            <td>{{ rule.msg }}</td>
+                                            <td>
+                                                {% if rule.enabled %}
+                                                    <span class="badge badge-success">Enabled</span>
+                                                {% else %}
+                                                    <span class="badge badge-danger">Disabled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-info"
+                                                        onclick="showRuleContent(`{{ rule.raw|escapejs }}`, '{{ rule.id }}')"
+                                                        data-toggle="modal" data-target="#ruleContentModal">
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="5">No rules found in this file.</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Modal -->
+    <div class="modal fade" id="ruleContentModal" tabindex="-1" role="dialog" aria-labelledby="ruleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="ruleModalLabel">Rule Content (ID: <span id="ruleModalId"></span>)</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre id="ruleModalContent" class="bg-dark text-white p-3 rounded"
+                         style="max-height: 70vh; overflow-y: auto;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        function showRuleContent(content, ruleId) {
+            document.getElementById('ruleModalContent').textContent = content;
+            document.getElementById('ruleModalId').textContent = ruleId;
+        }
+    </script>
+{% endblock %}

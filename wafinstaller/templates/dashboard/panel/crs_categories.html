@@ -1,0 +1,34 @@
+{% extends 'dashboard/main/main.html' %}
+
+{% block content %}
+    {% block title %}Rules Setting - Owasp Wafcontrol{% endblock %}
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">CRS Rule Files - Version {{ crs_version }}</h4>
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+                            <ul class="list-group">
+                                {% for file in rule_files %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {{ file }}
+                                        <a href="{% url 'wafinstaller:rules_by_file' file %}"
+                                           class="btn btn-sm btn-primary">View Rules</a>
+                                    </li>
+                                {% empty %}
+                                    <li class="list-group-item">No rule files found.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,169 @@
+{% extends 'dashboard/main/main.html' %}
+
+{% block content %}
+    {% block title %}Rule Manage - Owasp Wafcontrol{% endblock %}
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">ModSecurity CRS Rule Files - Version {{ crs_version }}</h4>
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+                            {% if rule_files %}
+                                <div class="table-responsive">
+                                    <table id="datatable" class="table table-striped table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Filename</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for file in rule_files %}
+                                            <tr>
+                                                <td>{{ forloop.counter }}</td>
+                                                <td>{{ file }}</td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-primary"
+                                                            onclick="loadRuleContent('{{ file }}', false)"
+                                                            data-toggle="modal" data-target=".bd-example-modal-xl">View
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-secondary"
+                                                            onclick="loadRuleContent('{{ file }}', true)"
+                                                            data-toggle="modal" data-target=".bd-example-modal-xl">Edit
+                                                    </button>
+                                                </td>
+
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Filename</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No rule files found.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade bd-example-modal-xl" tabindex="-1" role="dialog" aria-labelledby="ruleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="ruleModalLabel">Rule File Content</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="view-mode" style="display: none;">
+                        <pre id="ruleContent" class="bg-dark text-white p-3 rounded"
+                             style="max-height: 70vh; overflow-y: auto;">Loading...</pre>
+                    </div>
+                    <div id="edit-mode" style="display: none;">
+                        <textarea id="ruleTextarea" class="form-control"
+                                  style="height: 60vh; font-family: monospace;"></textarea>
+                        <button class="btn btn-success mt-3" onclick="saveEditedRule()">Save Changes</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        let currentFile = null;
+        let editMode = false;
+
+        function loadRuleContent(filename, isEdit) {
+            currentFile = filename;
+            editMode = isEdit;
+
+            document.getElementById("ruleContent").textContent = "Loading...";
+            document.getElementById("ruleTextarea").value = "";
+            document.getElementById("view-mode").style.display = "none";
+            document.getElementById("edit-mode").style.display = "none";
+
+            const encodedFilename = encodeURIComponent(filename);
+            fetch(`/crs/rules/view/${encodedFilename}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (isEdit) {
+                            document.getElementById("ruleTextarea").value = data.content;
+                            document.getElementById("edit-mode").style.display = "block";
+                        } else {
+                            document.getElementById("ruleContent").textContent = data.content;
+                            document.getElementById("view-mode").style.display = "block";
+                        }
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert("Request failed: " + err);
+                });
+        }
+
+        function saveEditedRule() {
+            const content = document.getElementById("ruleTextarea").value;
+            const encodedFilename = encodeURIComponent(currentFile);
+
+            fetch(`/crs/rules/save/${encodedFilename}/`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie("csrftoken")
+                },
+                body: JSON.stringify({content: content})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("File saved successfully.");
+                    } else {
+                        alert("Save failed: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert("Request failed: " + err);
+                });
+        }
+
+        // CSRF helper
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(';');
+                for (const cookie of cookies) {
+                    const trimmed = cookie.trim();
+                    if (trimmed.startsWith(name + "=")) {
+                        cookieValue = decodeURIComponent(trimmed.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+
+{% endblock %}

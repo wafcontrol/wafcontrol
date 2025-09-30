@@ -1,0 +1,199 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}Custom ModSecurity Rules{% endblock %}
+{% load static %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <h4 class="card-title">Custom ModSecurity Rules (CRS {{ version }})</h4>
+                            <a href="{% url 'wafinstaller:add_custom_rule' %}?version={{ version }}"
+                               class="btn btn-sm btn-success">+ Add New Rule</a>
+                        </div>
+
+                        <div class="iq-card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered text-center">
+                                    <thead class="thead-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Phase</th>
+                                        <th>Action</th>
+                                        <th>Variable</th>
+                                        <th>Operator</th>
+                                        <th>Message</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for rule in rules %}
+                                        <tr>
+                                            <td>{{ rule.id }}</td>
+                                            <td>{{ rule.phase }}</td>
+                                            <td>{{ rule.action }}</td>
+                                            <td>{{ rule.variable }}</td>
+                                            <td>{{ rule.operator }}</td>
+                                            <td>{{ rule.comment }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" data-toggle="modal"
+                                                        data-target="#editModal{{ rule.id }}">Edit
+                                                </button>
+                                                <form method="post"
+                                                      action="{% url 'wafinstaller:delete_custom_rule' rule.id %}"
+                                                      class="d-inline-block">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="version" value="{{ version }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger"
+                                                            onclick="return confirm('Delete rule {{ rule.id }}?')">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Edit Modal -->
+                                        <div class="modal fade" id="editModal{{ rule.id }}" tabindex="-1" role="dialog">
+                                            <div class="modal-dialog modal-lg" role="document">
+                                                <div class="modal-content">
+                                                    <form method="post"
+                                                          action="{% url 'wafinstaller:edit_custom_rule' rule.id %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="version" value="{{ version }}">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Edit Rule {{ rule.id }}</h5>
+                                                            <button type="button" class="close" data-dismiss="modal">
+                                                                <span>&times;</span></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="form-row">
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Rule ID</label>
+                                                                    <input type="text" class="form-control" name="id"
+                                                                           value="{{ rule.id }}" required>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Phase</label>
+                                                                    <select name="phase" class="form-control" required>
+                                                                        <option value="1"
+                                                                                {% if rule.phase == '1' %}selected{% endif %}>
+                                                                            Phase 1
+                                                                        </option>
+                                                                        <option value="2"
+                                                                                {% if rule.phase == '2' %}selected{% endif %}>
+                                                                            Phase 2
+                                                                        </option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Action</label>
+                                                                    <select name="action" class="form-control" required>
+                                                                        {% for act in actions %}
+                                                                            <option value="{{ act }}"
+                                                                                    {% if rule.action == act %}selected{% endif %}>{{ act }}</option>
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-row">
+                                                                <div class="form-group col-md-6">
+                                                                    <label>Variable</label>
+                                                                    <input type="text" class="form-control"
+                                                                           name="variable" value="{{ rule.variable }}"
+                                                                           required>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <label>Operator</label>
+                                                                    <input type="text" class="form-control"
+                                                                           name="operator" value="{{ rule.operator }}"
+                                                                           required>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label>Message</label>
+                                                                <input type="text" class="form-control" name="comment"
+                                                                       value="{{ rule.comment }}">
+                                                            </div>
+                                                            <div class="form-row">
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Severity</label>
+                                                                    <select name="severity" class="form-control">
+                                                                        <option value="">--</option>
+                                                                        <option value="1"
+                                                                                {% if rule.severity == '1' %}selected{% endif %}>
+                                                                            1 (Critical)
+                                                                        </option>
+                                                                        <option value="2"
+                                                                                {% if rule.severity == '2' %}selected{% endif %}>
+                                                                            2 (Error)
+                                                                        </option>
+                                                                        <option value="3"
+                                                                                {% if rule.severity == '3' %}selected{% endif %}>
+                                                                            3 (Warning)
+                                                                        </option>
+                                                                        <option value="4"
+                                                                                {% if rule.severity == '4' %}selected{% endif %}>
+                                                                            4 (Notice)
+                                                                        </option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Tags <small>(comma-separated)</small></label>
+                                                                    <input type="text" class="form-control" name="tag"
+                                                                           value="{{ rule.tag|default:'' }}">
+                                                                </div>
+                                                                <div class="form-group col-md-4">
+                                                                    <label>Transformations <small>(t:)</small></label>
+                                                                    <input type="text" class="form-control"
+                                                                           name="transformations"
+                                                                           value="{{ rule.transformations|default:'' }}">
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-row">
+                                                                <div class="form-group col-md-6">
+                                                                    <label>Version</label>
+                                                                    <input type="text" class="form-control" name="ver"
+                                                                           value="{{ rule.ver|default:'OWASP_CRS/4.17.0-dev' }}">
+                                                                </div>
+                                                                <div class="form-group col-md-6 pt-4">
+                                                                    <label><input type="checkbox" name="capture"
+                                                                                  {% if rule.capture %}checked{% endif %}>
+                                                                        Enable Capture</label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="submit" class="btn btn-success">Save Changes
+                                                            </button>
+                                                            <button type="button" class="btn btn-secondary"
+                                                                    data-dismiss="modal">Cancel
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-muted text-center">No custom rules defined.</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

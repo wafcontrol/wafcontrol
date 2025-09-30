@@ -1,0 +1,22 @@
+# Python cache files
+*.pyc
+__pycache__/
+
+# Virtual environment
+.venv/
+.env
+
+# IDE/editor configs
+.vscode/
+.idea/
+
+# Databases and logs
+*.sqlite3
+*.log
+*.bak
+
+# macOS junk
+.DS_Store
+
+# Django migrations (all apps)
+**/migrations/

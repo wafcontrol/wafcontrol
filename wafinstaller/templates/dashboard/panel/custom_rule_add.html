@@ -1,0 +1,109 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}Add Custom CRS Rule{% endblock %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid mt-4">
+            <div class="iq-card">
+                <div class="iq-card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Add Custom ModSecurity Rule (CRS Style)</h4>
+                    <a href="{% url 'wafinstaller:custom_rules' %}?version={{ version }}"
+                       class="btn btn-sm btn-secondary">← Back</a>
+                </div>
+                <div class="iq-card-body">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="version" value="{{ version }}">
+
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label>Rule ID</label>
+                                <input type="text" name="id" class="form-control" required>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Phase</label>
+                                <select name="phase" class="form-control" required>
+                                    <option value="1">Phase 1</option>
+                                    <option value="2">Phase 2</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Action</label>
+                                <select name="action" class="form-control" required>
+                                    <option value="deny">deny</option>
+                                    <option value="pass">pass</option>
+                                    <option value="allow">allow</option>
+                                    <option value="drop">drop</option>
+                                    <option value="log">log</option>
+                                    <option value="nolog">nolog</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Severity</label>
+                                <select name="severity" class="form-control">
+                                    <option value="">--</option>
+                                    <option value="1">1 (Critical)</option>
+                                    <option value="2">2 (Error)</option>
+                                    <option value="3">3 (Warning)</option>
+                                    <option value="4">4 (Notice)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Variable</label>
+                                <input type="text" name="variable" class="form-control" required
+                                       placeholder="e.g. REQUEST_URI">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Operator</label>
+                                <input type="text" name="operator" class="form-control" required
+                                       placeholder='e.g. @rx ^/admin'>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Transformations (t:)</label>
+                                <input type="text" name="transformations" class="form-control"
+                                       placeholder="e.g. lowercase,urlDecode">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label>Tags (comma-separated)</label>
+                                <input type="text" name="tag" class="form-control"
+                                       placeholder="e.g. application-multi,attack-xss">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label>Version</label>
+                                <input type="text" name="ver" class="form-control"
+                                       placeholder="e.g. OWASP_CRS/4.17.0-dev">
+                            </div>
+                            <div class="form-group col-md-6 d-flex align-items-center">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" name="capture" id="capture">
+                                    <label class="form-check-label" for="capture">Capture</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Message</label>
+                            <input type="text" name="comment" class="form-control"
+                                   placeholder="e.g. Detect access to admin path">
+                        </div>
+
+                        <button type="submit" class="btn btn-success">Save Rule</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

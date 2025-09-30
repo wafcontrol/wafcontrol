@@ -1,0 +1,63 @@
+/*------------- Variable ------------*/
+
+:root {
+  --iq-title-text: #000000;
+  --iq-body-text: #585858;
+  --iq-body-bg: #fafbfe;
+  --iq-primary: #4e37b2;
+  --iq-secondary: #a09e9e;
+  --iq-success: #1ee2ac;
+  --iq-warning: #ffdd31;
+  --iq-danger: #ff7750;
+  --iq-info: #00d0ff;
+  --iq-dark: #01041b;
+  --iq-light: #ccced2;
+  --iq-white: #ffffff;
+  --iq-black: #000000;
+  --iq-gray: #c2c2c2;
+  --iq-close: #ff4e4e;
+  --iq-search: #b4a4ff;
+  --iq-light-primary: #dbd7f0;
+  --iq-light-secondary: #f1f2f1;
+  --iq-light-success: #e1fff7;
+  --iq-light-danger: #ffe4dc;
+  --iq-light-warning: #fefaee;
+  --iq-light-info: #f4f0ff;
+  --iq-light-dark: #f0efef;
+  --iq-light-close: #ffdbdb;
+  --iq-light-menu: #9f8bf6;
+  --iq-light-search: #5b43c7;
+  --iq-light-hover: #eaeeff;
+  --iq-primary-hover: #452abb;
+  --iq-secondary-hover: #3948e8;
+  --iq-success-hover: #0ce1a6;
+  --iq-danger-hover: #f9663c;
+  --iq-warning-hover: #fefaee;
+  --iq-info-hover: #03b6de;
+  --iq-dark-hover: #3948e8;
+  --iq-border-light: #f1f1f1;
+  --iq-border-danger: #ff9273;
+  --iq-light-card: #ffffff;
+  --iq-primary-rgb: 100, 114, 248;
+  /* color for customizer*/
+  --iq-color1: #4e37b2;
+  --iq-color2: #02d871;
+  --iq-color3: #309cf3;
+  --iq-color4: #ff00ff;
+  --iq-color5: #fb1f4c;
+  --iq-color6: #00ced1;
+  --iq-color7: #f35f3b;
+  --iq-color8: #fde117;
+  --iq-color9: #ff0000;
+  --iq-color10: #88028c;
+  --iq-color11: #00d5ab;
+  --iq-color12: #ce9252;
+  --iq-color13: #f9ae02;
+  --iq-color14: #1e7fe4;
+  --iq-color15: #006400;
+  --iq-color16: #fa7c04;
+  --iq-color17: #81bf02;
+  --iq-color18: #99a7ca;
+  --iq-color19: #3d2a26;
+  --iq-color20: #a0746b;
+}

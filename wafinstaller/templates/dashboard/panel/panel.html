@@ -1,0 +1,451 @@
+{% extends 'dashboard/main/main.html' %}
+{% load static %}
+{% block content %}
+    <!-- Page Content  -->
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row content-body">
+                <div class="col-lg-8">
+                    <div class="iq-card iq-card-block iq-card-stretch iq-card-height iq-bg-danger">
+                        <div class="iq-card-body box iq-box-relative">
+                            <div class="box-image float-right">
+                                <img class="rounded img-fluid" src="{% static 'dashboard/images/dash.png' %}"
+                                     alt="profile">
+                            </div>
+                            <h4 class="d-block mb-3 text-black">Welcome back {{ request.user.get_full_name }}</h4>
+                            <p class="d-inline-block welcome-text text-black">
+                                Welcome to your WafControl dashboard. From here, you can monitor, manage, and protect
+                                your web infrastructure with advanced security features.
+                            </p>
+
+                            <!-- نمایش وب‌سرور فعال -->
+                            <p class="mt-2"><strong>Active Server:</strong>
+                                <span class="badge badge-info">{{ active_server|default:"none"|title }}</span>
+                            </p>
+
+                            <script>
+                                document.getElementById("update-crs-btn")?.addEventListener("click", function () {
+                                    document.getElementById("update-status").style.display = "block";
+                                    document.getElementById("update-log").style.display = "block";
+                                    document.getElementById("update-log").textContent = "";
+
+                                    fetch("{% url 'wafinstaller:dashboard' %}", {
+                                        method: "POST",
+                                        headers: {
+                                            "X-CSRFToken": "{{ csrf_token }}"
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            document.getElementById("update-status").style.display = "none";
+                                            if (data.status === "done") {
+                                                document.getElementById("update-log").textContent = data.log.join("\n");
+                                            } else {
+                                                document.getElementById("update-log").textContent = "Error: " + data.message;
+                                            }
+                                        })
+                                        .catch(err => {
+                                            document.getElementById("update-status").style.display = "none";
+                                            document.getElementById("update-log").textContent = "Unexpected error: " + err;
+                                        });
+                                });
+                            </script>
+
+                            {% if waf.exit_code == 0 %}
+                                {% if update_available %}
+                                    <div class="alert alert-primary" role="alert">
+                                        A newer version of CRS is available: <strong>{{ latest_crs }}</strong>
+                                    </div>
+
+                                    <div id="update-section">
+                                        <button id="update-crs-btn" class="btn btn-primary">
+                                            Update to {{ latest_crs }}
+                                        </button>
+                                        <div id="update-status" class="mt-3 iq-alert-text" style="display: none;">
+                                            <i class="fa fa-spinner fa-spin"></i> Updating... Please wait.
+                                        </div>
+                                        <pre id="update-log" class="mt-2 p-2 bg-light text-dark"
+                                             style="display:none; max-height: 300px; overflow-y:auto; font-size: 14px;"></pre>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-primary">CRS is up to date.</div>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-danger">WAF is not installed.</p>
+{#                                <form method="post" action="{% url 'wafinstaller:install_waf_page' %}">#}
+{#                                    {% csrf_token %}#}
+{#                                    <button type="submit" class="btn btn-primary">Install WAF</button>#}
+{#                                </form>#}
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                        <div class="iq-card-body">
+                            <ul class="suggestions-lists m-0 p-0">
+
+                                <!-- NGINX -->
+                                <li class="d-flex mb-4 align-items-center justify-content-between">
+                                    <div class="col-sm-9 p-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-55 text-center rounded {% if nginx.exit_code == 0 %}iq-bg-success{% else %}iq-bg-danger{% endif %}">
+                                                <span>NGX</span>
+                                            </div>
+                                            <div class="media-support-info ml-3">
+                                                <h5>Nginx</h5>
+                                                <p class="mb-0">
+                                                    {% if nginx.exit_code == 0 %}
+                                                        Installed - v{{ nginx.version }}
+                                                    {% else %}
+                                                        Not Installed
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-3 p-0">
+                                        <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                            <div class="iq-progress-bar">
+                                                <span class="{% if nginx.exit_code == 0 %}bg-success{% else %}bg-danger{% endif %}"
+                                                      data-percent="{% if nginx.exit_code == 0 %}100{% else %}0{% endif %}"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+
+                                <!-- APACHE -->
+                                <li class="d-flex mb-4 align-items-center justify-content-between">
+                                    <div class="col-sm-9 p-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-55 text-center rounded {% if apache.exit_code == 0 %}iq-bg-success{% else %}iq-bg-danger{% endif %}">
+                                                <span>APH</span>
+                                            </div>
+                                            <div class="media-support-info ml-3">
+                                                <h5>Apache</h5>
+                                                <p class="mb-0">
+                                                    {% if apache.exit_code == 0 %}
+                                                        Installed - v{{ apache.version }}
+                                                    {% else %}
+                                                        Not Installed
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-3 p-0">
+                                        <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                            <div class="iq-progress-bar">
+                                                <span class="{% if apache.exit_code == 0 %}bg-success{% else %}bg-danger{% endif %}"
+                                                      data-percent="{% if apache.exit_code == 0 %}100{% else %}0{% endif %}"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+
+                                <!-- WAF -->
+                                <li class="d-flex align-items-center justify-content-between">
+                                    <div class="col-sm-9 p-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-55 text-center rounded {% if waf.exit_code == 0 %}iq-bg-success{% else %}iq-bg-danger{% endif %}">
+                                                <span>WAF</span>
+                                            </div>
+                                            <div class="media-support-info ml-3">
+                                                <h5>ModSecurity + CRS</h5>
+                                                <p class="mb-0">
+                                                    {% if waf.exit_code == 0 %}
+                                                        Installed - CRS v{{ installed_crs }}
+                                                    {% else %}
+                                                        Not Installed
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-3 p-0">
+                                        <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                            <div class="iq-progress-bar">
+                                                <span class="{% if waf.exit_code == 0 %}bg-success{% else %}bg-danger{% endif %}"
+                                                      data-percent="{% if waf.exit_code == 0 %}100{% else %}0{% endif %}"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8 row m-0 p-0">
+                    <div class="col-sm-6 col-md-6 col-lg-3">
+                        <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                            <div class="iq-card-body">
+                                <div class="icon iq-icon-box iq-bg-primary rounded" data-wow-delay="0.2s">
+                                    <i class="ri-cpu-line"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-black text-uppercase">Load Average </h5>
+                                    <h3 class="d-flex text-primary">{{ cpu_load }}%<i class="ri-arrow-up-line"></i></h3>
+                                </div>
+                                <p class="mb-0 mt-1">Load {{ cpu_load }}</p>
+                                <div class="mt-3">
+                                    <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                        <div class="iq-progress-bar">
+                                            <span class="bg-primary" data-percent="{{ cpu_load|floatformat:0 }}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-md-6 col-lg-3">
+                        <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                            <div class="iq-card-body">
+                                <div class="icon iq-icon-box iq-bg-danger rounded" data-wow-delay="0.2s">
+                                    <i class="ri-window-line"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-black text-uppercase">RAM</h5>
+                                    <h3 class="d-flex text-danger">{{ ram_usage }}%<i class="ri-arrow-down-line"></i>
+                                    </h3>
+                                </div>
+                                <p class="mb-0 mt-1">Usage</p>
+                                <div class="mt-3">
+                                    <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                        <div class="iq-progress-bar">
+                                            <span class="bg-danger" data-percent="{{ ram_usage|floatformat:0 }}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-md-6 col-lg-3">
+                        <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                            <div class="iq-card-body">
+                                <div class="icon iq-icon-box iq-bg-primary rounded" data-wow-delay="0.2s">
+                                    <i class="ri-u-disk-line"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-black text-uppercase">DISK</h5>
+                                    <h3 class="d-flex text-primary">{{ disk_usage }}%<i class="ri-arrow-up-line"></i>
+                                    </h3>
+                                </div>
+                                <p class="mb-0 mt-1">Free {{ storage_free }}</p>
+                                <div class="mt-3">
+                                    <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                        <div class="iq-progress-bar">
+                                            <span class="bg-primary" data-percent="{{ disk_usage }}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 col-md-6 col-lg-3">
+                        <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                            <div class="iq-card-body">
+                                <div class="icon iq-icon-box iq-bg-danger rounded" data-wow-delay="0.2s">
+                                    <i class="ri-global-line"></i>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-black text-uppercase">SERVICES</h5>
+                                    <h3 class="d-flex text-danger">{{ total_processes }}</h3>
+                                </div>
+                                <p class="mb-0 mt-1">Handles: {{ total_handles }}</p>
+                                <div class="mt-3">
+                                    <div class="iq-progress-bar-linear d-inline-block mt-1 w-100">
+                                        <div class="iq-progress-bar">
+                                            <span class="bg-danger" data-percent="48"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="iq-card bg-danger iq-card-block iq-card-stretch iq-card-height-half">
+                        <div class="iq-card-body box iq-box-relative">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                                <div class="col-7 p-0">
+                                    <div class="float-left progress-round income-progress mr-3"
+                                         data-value="{{ disk_usage }}">
+                                        <span class="progress-left">
+                                            <span class="progress-bar border-white"
+                                                  style="transform: rotate(108deg);"></span>
+                                        </span>
+                                        <span class="progress-right">
+                                            <span class="progress-bar border-white"
+                                                  style="transform: rotate(180deg);"></span>
+                                        </span>
+                                        <div class="progress-value w-100 h-100 rounded d-flex align-items-center justify-content-center text-center">
+                                            <div class="h4 mb-0">{{ disk_usage }}</div>
+                                        </div>
+                                    </div>
+                                    <h5 class="d-block mt-2 text-white font-weight-500">Storage<br> Usage</h5>
+                                </div>
+                                <div class="col-5 pr-0 right-border-block position-relative">
+                                    <h5 class="text-white mt-2">{{ storage_free }}</h5>
+                                    <span class="text-white">Free Space</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="iq-card iq-card-block iq-card-stretch iq-card-height-half iq-background-image">
+                        <div class="iq-card-body box iq-box-relative rounded">
+                            <div class="d-flex justify-content-between align-items-left">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="float-left progress-round income-progress" data-value="80">
+                                        <span class="progress-left">
+                                            <span class="progress-bar border-primary"
+                                                  style="transform: rotate(108deg);"></span>
+                                        </span>
+                                        <span class="progress-right">
+                                            <span class="progress-bar border-success"
+                                                  style="transform: rotate(180deg);"></span>
+                                        </span>
+                                    </div>
+                                    <div class="pl-3">
+                                        <ul class="float-right d-inline-block p-0 m-0 list-inline">
+                                            <li class="line-height-3">
+                                                <span class="text-danger total-progress position-relative pl-2">
+                                                    <span class="bg-danger rounded"></span>Total Processes: {{ total_processes }}
+                                                </span>
+                                            </li>
+                                            <li class="line-height-3">
+                                                <span class="text-primary total-progress position-relative pl-2">
+                                                    <span class="bg-primary rounded"></span>Total Threads: {{ total_threads }}
+                                                </span>
+                                            </li>
+                                            <li class="line-height-3">
+                                                <span class="text-success total-progress position-relative pl-2">
+                                                    <span class="bg-success rounded"></span>Total Handles: {{ total_handles }}
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="col-lg-12">
+                    <div class="iq-card iq-card-block iq-card-stretch iq-card-height">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">Recent WAF Attacks</h4>
+                            </div>
+                            <div class="iq-card-header-toolbar d-flex align-items-center">
+                                <div class="dropdown">
+                                    <span class="dropdown-toggle text-primary" id="dropdownMenuButton2"
+                                          data-toggle="dropdown">
+                                        <i class="ri-more-2-fill"></i>
+                                    </span>
+                                    <div class="dropdown-menu dropdown-menu-right"
+                                         aria-labelledby="dropdownMenuButton2">
+                                        <a class="dropdown-item" href="{% url 'wafinstaller:waf_attacks' %}">
+                                            <i class="ri-eye-fill mr-2"></i>View All
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+                            <div class="table-responsive">
+                                <table class="table mb-0 table-borderless tbl-server-info">
+                                    <thead>
+                                    <tr>
+                                        <th>IP</th>
+                                        <th>Time</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                        <th>Country</th>
+                                        <th>Rule ID</th>
+                                        <th></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for attack in recent_attacks %}
+                                        <tr class="{% if attack.status == 'Blocked' %}table-danger{% endif %}">
+                                            <td><b>{{ attack.ip }}</b></td>
+                                            <td>{{ attack.timestamp|date:"Y-m-d H:i" }}</td>
+                                            <td title="{{ attack.message }}">{{ attack.message|truncatechars:50 }}</td>
+                                            <td>
+                                                {% if attack.status == "Blocked" %}
+                                                    <span class="badge badge-danger">Blocked</span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">Detected</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <img src="https://flagcdn.com/24x18/{{ attack.flag }}.png"
+                                                     onerror="this.src='https://flagcdn.com/24x18/xx.png';"
+                                                     alt="{{ attack.country }}"
+                                                     style="vertical-align: middle; border-radius: 3px;">
+                                                {{ attack.country }}
+                                            </td>
+                                            <td>{{ attack.rule_id }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">No recent WAF attacks.</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("update-crs-btn")?.addEventListener("click", function () {
+            const status = document.getElementById("update-status");
+            const log = document.getElementById("update-log");
+            status.style.display = "block";
+            log.style.display = "block";
+            log.textContent = "";
+
+            fetch("{% url 'wafinstaller:update_crs_sync' %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "done") {
+                        log.textContent = data.log.join("\n");
+                    } else {
+                        log.textContent = "Error: " + data.message;
+                    }
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                })
+                .catch(error => {
+                    status.style.display = "none";
+                    log.textContent = "Unexpected error: " + error;
+                });
+        });
+    </script>
+{% endblock %}
+
+{% block js %}{% endblock %}

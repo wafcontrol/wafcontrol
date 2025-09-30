@@ -1,0 +1,347 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}Owasp Wafcontrol{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="https://owasp.org/www--site-theme/favicon.ico"/>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/bootstrap.min.css' %}">
+    <!-- Typography CSS -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/typography.css' %}">
+    <!-- Style CSS -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+    <!-- Responsive CSS -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/responsive.css' %}">
+    {% block css %}{% endblock %}
+
+</head>
+<body>
+{#      <!-- loader Start -->#}
+{#      <div id="loading">#}
+{#         <div id="loading-center">#}
+{#         </div>#}
+{#      </div>#}
+{#      <!-- loader END -->#}
+<!-- Wrapper Start -->
+<div class="wrapper">
+    <!-- Sidebar  -->
+    <div class="iq-sidebar">
+        <div class="iq-sidebar-logo d-flex justify-content-between">
+            <a href="{% url 'wafinstaller:dashboard' %}" class="header-logo">
+                <img src="{% static 'dashboard/images/logo.png' %}" class="img-fluid rounded-normal" alt="">
+                <div class="logo-title">
+                    <span class="text-danger text-uppercase"><span class="text-primary ml-1">Wafcontrol</span></span>
+                </div>
+            </a>
+            <div class="iq-menu-bt-sidebar">
+                <div class="iq-menu-bt align-self-center">
+                    <div class="wrapper-menu">
+                        <div class="main-circle"><i class="ri-arrow-left-s-line"></i></div>
+                        <div class="hover-circle"><i class="ri-arrow-right-s-line"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="sidebar-scrollbar">
+            <nav class="iq-sidebar-menu">
+                <ul id="iq-sidebar-toggle" class="iq-menu">
+
+                    <li class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:dashboard' %}" class="iq-waves-effect">
+                            <i class="las la-home iq-arrow-left"></i><span>Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="{% if request.resolver_match.url_name in 'waf_attacks critical_attacks top-attacker' %}active{% endif %}">
+                        <a href="#attack" class="iq-waves-effect" data-toggle="collapse"
+                           aria-expanded="{% if request.resolver_match.url_name in 'waf_attacks critical_attacks top-attacker' %}true{% else %}false{% endif %}">
+                            <span class="ripple rippleEffect"></span>
+                            <i class="las la-shield-alt iq-arrow-left"></i>
+                            <span>Attack Control</span>
+                            <i class="ri-arrow-right-s-line iq-arrow-right"></i>
+                        </a>
+                        <ul id="attack"
+                            class="iq-submenu collapse {% if request.resolver_match.url_name in 'waf_attacks critical_attacks top-attacker' %}show{% endif %}"
+                            data-parent="#iq-sidebar-toggle">
+
+                            <li class="{% if request.resolver_match.url_name == 'waf_attacks' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:waf_attacks' %}">
+                                    <i class="las la-shield-alt"></i> All Attack
+                                </a>
+                            </li>
+
+                            <li class="{% if request.resolver_match.url_name == 'critical_attacks' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:critical_attacks' %}">
+                                    <i class="las la-exclamation-triangle"></i> Critical Attack
+                                </a>
+                            </li>
+
+                            <li class="{% if request.resolver_match.url_name == 'top-attacker' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:top-attacker' %}">
+                                    <i class="las la-user-secret"></i> Top Attacker
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- Rule Management -->
+                    <li class="{% if request.resolver_match.url_name in 'crs_rules categorized_files' %}active{% endif %}">
+                        <a href="#rule-management" class="iq-waves-effect" data-toggle="collapse"
+                           aria-expanded="{% if request.resolver_match.url_name in 'crs_rules categorized_files' %}true{% else %}false{% endif %}">
+                            <span class="ripple rippleEffect"></span>
+                            <i class="las la-cogs iq-arrow-left"></i>
+                            <span>Rule Management</span>
+                            <i class="ri-arrow-right-s-line iq-arrow-right"></i>
+                        </a>
+                        <ul id="rule-management"
+                            class="iq-submenu collapse {% if request.resolver_match.url_name in 'crs_rules categorized_files' %}show{% endif %}"
+                            data-parent="#iq-sidebar-toggle">
+
+                            <li class="{% if request.resolver_match.url_name == 'crs_rules' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:crs_rules' %}">
+                                    <i class="las la-sliders-h"></i> Rules
+                                </a>
+                            </li>
+
+                            <li class="{% if request.resolver_match.url_name == 'categorized_files' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:categorized_files' %}">
+                                    <i class="las la-eye"></i> Rules Viewer
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+
+                    <!-- CRS Control -->
+                    <li class="{% if request.resolver_match.url_name in 'crs_version crs_settings custom_rules' %}active{% endif %}">
+                        <a href="#crs-control" class="iq-waves-effect" data-toggle="collapse"
+                           aria-expanded="{% if request.resolver_match.url_name in 'crs_version crs_settings custom_rules' %}true{% else %}false{% endif %}">
+                            <span class="ripple rippleEffect"></span>
+                            <i class="las la-toolbox iq-arrow-left"></i>
+                            <span>CRS Control</span>
+                            <i class="ri-arrow-right-s-line iq-arrow-right"></i>
+                        </a>
+                        <ul id="crs-control"
+                            class="iq-submenu collapse {% if request.resolver_match.url_name in 'crs_version crs_settings custom_rules' %}show{% endif %}"
+                            data-parent="#iq-sidebar-toggle">
+
+                            <li class="{% if request.resolver_match.url_name == 'crs_version' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:crs_version' %}">
+                                    <i class="las la-code-branch"></i> Version Switcher
+                                </a>
+                            </li>
+
+                            <li class="{% if request.resolver_match.url_name == 'crs_settings' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:crs_settings' %}">
+                                    <i class="las la-sliders-h"></i> CRS Setting
+                                </a>
+                            </li>
+
+                            <li class="{% if request.resolver_match.url_name == 'custom_rules' %}active{% endif %}">
+                                <a href="{% url 'wafinstaller:custom_rules' %}">
+                                    <i class="las la-code"></i> Custom Rules
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+
+                    <!-- Owc Setting -->
+                    <li class="{% if request.resolver_match.url_name == 'app_settings' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:app_settings' %}" class="iq-waves-effect">
+                            <i class="las la-tools iq-arrow-left"></i><span>Owc Setting</span>
+                        </a>
+                    </li>
+
+                    <!-- Admin Setting -->
+                    <li class="{% if request.resolver_match.url_name == 'admin_profile' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:admin_profile' %}" class="iq-waves-effect">
+                            <i class="las la-user-cog iq-arrow-left"></i><span>Admin Setting</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+
+            <br>
+            <div class="alert alert-primary text-start d-flex flex-column align-items-start" role="alert" dir="ltr">
+                <div>
+                    <i class="las la-shield-alt me-1"></i>
+                    <strong>Owasp WafControl</strong>
+                </div>
+                <small class="mt-1">
+                    <i class="las la-code-branch me-1"></i> OWC V1.0.0
+                </small>
+            </div>
+        </div>
+
+
+    </div>
+    <!-- TOP Nav Bar -->
+    <div class="iq-top-navbar">
+        <div class="iq-navbar-custom">
+            <nav class="navbar navbar-expand-lg navbar-light p-0">
+                <div class="iq-menu-bt d-flex align-items-center">
+                    <div class="wrapper-menu">
+                        <div class="main-circle"><i class="ri-arrow-left-s-line"></i></div>
+                        <div class="hover-circle"><i class="ri-arrow-right-s-line"></i></div>
+                    </div>
+
+                </div>
+                <div class="navbar-breadcrumb">
+                    <h4 class="mb-0 text-dark">Dashboard</h4>
+                    <p class="mb-0"><span class="text-danger">Hi {{ request.user.get_full_name }},</span> Great to see
+                        you again</p>
+                </div>
+
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav ml-auto navbar-list">
+                        <li class="nav-item nav-icon">
+
+                        </li>
+
+                    </ul>
+                </div>
+                <ul class="navbar-list">
+                    <li class="line-height">
+                        <a href="#" class="search-toggle iq-waves-effect d-flex align-items-center">
+                            <img src="{% static 'dashboard/images/user/user.png' %}" class="img-fluid rounded-circle"
+                                 alt="user">
+                        </a>
+                        <div class="iq-sub-dropdown iq-user-dropdown">
+                            <div class="iq-card shadow-none m-0">
+                                <div class="iq-card-body p-0 ">
+                                    <div class="bg-primary p-3">
+                                        <h5 class="mb-0 text-white line-height">
+                                            Hello {{ request.user.get_full_name }}</h5>
+                                        <span class="text-white font-size-12">Wellcome</span>
+                                    </div>
+                                    <a href="{% url 'wafinstaller:admin_profile' %}"
+                                       class="iq-sub-card iq-bg-primary-hover">
+                                        <div class="media align-items-center">
+                                            <div class="rounded iq-card-icon iq-bg-primary">
+                                                <i class="ri-file-user-line"></i>
+                                            </div>
+                                            <div class="media-body ml-3">
+                                                <h6 class="mb-0 ">Admin Setting</h6>
+                                                <p class="mb-0 font-size-12">View personal profile details.</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    <a href="{% url 'wafinstaller:app_settings' %}"
+                                       class="iq-sub-card iq-bg-primary-hover">
+                                        <div class="media align-items-center">
+                                            <div class="rounded iq-card-icon iq-bg-primary">
+                                                <i class="ri-profile-line"></i>
+                                            </div>
+                                            <div class="media-body ml-3">
+                                                <h6 class="mb-0 ">OWC Setting</h6>
+                                                <p class="mb-0 font-size-12">Modify your personal details.</p>
+                                            </div>
+                                        </div>
+                                    </a>
+
+                                    <div class="d-inline-block w-100 text-center p-3">
+                                        <form method="post" action="{% url 'wafinstaller:logout' %}"
+                                              style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="bg-primary iq-sign-btn border-0 text-white"
+                                                    style="cursor:pointer;">
+                                                Sign out <i class="ri-login-box-line ml-2"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- TOP Nav Bar END -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer class="iq-footer">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-6">
+                    <ul class="list-inline mb-0">
+                        <li class="list-inline-item"><a href="">Owasp Project</a></li>
+                        <li class="list-inline-item"><a href="">Github</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-6 text-right">
+                    Owasp Waf Control(v1.0.0). Built on top of the OWASP CRS project.thanks to the CRS community.
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- Footer END -->
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="{% static 'dashboard/js/jquery.min.js' %}"></script>
+    <script src="{% static 'dashboard/js/popper.min.js' %}"></script>
+    <script src="{% static 'dashboard/js/bootstrap.min.js' %}"></script>
+    <!-- Appear JavaScript -->
+    <script src="{% static 'dashboard/js/jquery.appear.js' %}"></script>
+    <!-- Countdown JavaScript -->
+    <script src="{% static 'dashboard/js/countdown.min.js' %}"></script>
+    <!-- Counterup JavaScript -->
+    <script src="{% static 'dashboard/js/waypoints.min.js' %}"></script>
+    <script src="{% static 'dashboard/js/jquery.counterup.min.js' %}"></script>
+    <!-- Wow JavaScript -->
+    <script src="{% static 'dashboard/js/wow.min.js' %}"></script>
+    <!-- Apexcharts JavaScript -->
+    <script src="{% static 'dashboard/js/apexcharts.js' %}"></script>
+    <!-- Slick JavaScript -->
+    <script src="{% static 'dashboard/js/slick.min.js' %}"></script>
+    <!-- Select2 JavaScript -->
+    <script src="{% static 'dashboard/js/select2.min.js' %}"></script>
+    <!-- Owl Carousel JavaScript -->
+    <script src="{% static 'dashboard/js/owl.carousel.min.js' %}"></script>
+    <!-- Magnific Popup JavaScript -->
+    <script src="{% static 'dashboard/js/jquery.magnific-popup.min.js' %}"></script>
+    <!-- Smooth Scrollbar JavaScript -->
+    <script src="{% static 'dashboard/js/smooth-scrollbar.js' %}"></script>
+    <!-- lottie JavaScript -->
+    <script src="{% static 'dashboard/js/lottie.js' %}"></script>
+    <!-- am core JavaScript -->
+    <script src="{% static 'dashboard/js/core.js' %}"></script>
+    <!-- am charts JavaScript -->
+    <script src="{% static 'dashboard/js/charts.js' %}"></script>
+    <!-- am animated JavaScript -->
+    <script src="{% static 'dashboard/js/animated.js' %}"></script>
+    <!-- am kelly JavaScript -->
+    <script src="{% static 'dashboard/js/kelly.js' %}"></script>
+    <!-- am maps JavaScript -->
+    <script src="{% static 'dashboard/js/maps.js' %}"></script>
+    <!-- am worldLow JavaScript -->
+    <script src="{% static 'dashboard/js/worldLow.js' %}"></script>
+    <!-- Raphael-min JavaScript -->
+    <script src="{% static 'dashboard/js/raphael-min.js' %}"></script>
+    <!-- Morris JavaScript -->
+    <script src="{% static 'dashboard/js/morris.js' %}"></script>
+    <!-- Morris min JavaScript -->
+    <script src="{% static 'dashboard/js/morris.min.js' %}"></script>
+    <!-- Flatpicker Js -->
+    <script src="{% static 'dashboard/js/flatpickr.js' %}"></script>
+    <!-- Style Customizer -->
+    <script src="{% static 'dashboard/js/style-customizer.js' %}"></script>
+    <!-- Chart Custom JavaScript -->
+    <script src="{% static 'dashboard/js/chart-custom.js' %}"></script>
+    <!-- Custom JavaScript -->
+    <script src="{% static 'dashboard/js/custom.js' %}"></script>
+
+    {% block js %}{% endblock %}
+
+</body>
+</html>

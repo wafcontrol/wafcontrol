@@ -1,0 +1,57 @@
+{% extends 'dashboard/main/main.html' %}
+{% block content %}
+    <div class="container">
+        <h3 class="text-primary">🔒 Server Traffic Overview</h3>
+
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <div class="card p-3 shadow">
+                    <h5>Total Connections</h5>
+                    <p class="text-success display-5">{{ connection_count }}</p>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card p-3 shadow">
+                    <h5>Top 20 IPs with Most Connections</h5>
+                    <ul class="list-group">
+                        {% for item in top_ips %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>{{ item.ip }}</span>
+                                <span class="badge bg-primary">{{ item.count }}</span>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item">No Data</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 p-3 shadow">
+            <h5>SYN_RECV Connections (Potential DDoS)</h5>
+            <ul class="list-group">
+                {% for item in syn_recv_ips %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{{ item.ip }}</span>
+                        <span class="badge bg-danger">{{ item.count }}</span>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item">No suspicious activity</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card mt-4 p-3 shadow">
+            <h5>Connection States</h5>
+            <ul class="list-group">
+                {% for item in states %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{{ item.state }}</span>
+                        <span class="badge bg-info">{{ item.count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}

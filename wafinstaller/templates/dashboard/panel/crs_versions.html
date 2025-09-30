@@ -1,0 +1,109 @@
+{% extends 'dashboard/main/main.html' %}
+{% load static %}
+{% block content %}
+    {% block title %}CRS Versions - Owasp Wafcontrol{% endblock %}
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">Available CRS Versions</h4>
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+
+                            <!-- Show success or info messages -->
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-info">{{ message }}</div>
+                                {% endfor %}
+                            {% endif %}
+
+                            <p class="text-muted mb-3">
+                                Installed Version: <strong>{{ installed_version }}</strong> |
+                                Latest Version: <strong>{{ latest_version }}</strong> |
+                                Last Fetched: <strong>{{ fetched_at }}</strong>
+                            </p>
+                            <p class="text-muted mb-3">
+                                CRS versions are automatically checked every <strong>12 hours</strong>.
+                                If you want to fetch the latest update right now, click below:
+                            </p>
+                            <form method="post" action="{% url 'wafinstaller:force_fetch_crs_versions' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-info">Force Fetch Latest CRS Versions
+                                </button>
+                            </form>
+                            <br>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped text-center">
+                                    <thead class="thead-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Version</th>
+                                        <th>Published</th>
+                                        <th>Action</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for v in versions %}
+                                        <tr class="
+    {% if v.normalized_tag == installed_version %}table-active{% elif v.normalized_tag == latest_version %}{% endif %}
+">
+
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>
+                                                {% if v.tag == installed_version %}
+                                                    <strong>{{ v.tag }}</strong>
+                                                {% else %}
+                                                    {{ v.tag }}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ v.published_at|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                {% if v.normalized_tag == installed_version %}
+                                                    <form method="post"
+                                                          action="{% url 'wafinstaller:switch_crs_version' %}"
+                                                          style="margin: 0">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="version" value="{{ v.tag }}">
+                                                        <button type="submit" class="btn btn-sm btn-warning">Reinstall
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <form method="post"
+                                                          action="{% url 'wafinstaller:switch_crs_version' %}"
+                                                          style="margin: 0">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="version" value="{{ v.tag }}">
+                                                        <button type="submit" class="btn btn-sm btn-success">Switch
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+
+                                            </td>
+
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-muted text-center">No versions available.</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <a href="{% url 'wafinstaller:dashboard' %}" class="btn btn-outline-primary mt-3">Back to
+                                Dashboard</a>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

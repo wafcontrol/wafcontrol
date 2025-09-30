@@ -1,0 +1,63 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+   <head>
+      <!-- Required meta tags -->
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <title>WafControl - CRS Professional</title>
+      <!-- Favicon -->
+      <link rel="shortcut icon" href="{% static 'dashboard/images/favicon.ico' %}" />
+      <!-- Bootstrap CSS -->
+      <link rel="stylesheet" href="{% static 'dashboard/css/bootstrap.min.css' %}">
+      <!-- Typography CSS -->
+      <link rel="stylesheet" href="{% static 'dashboard/css/typography.css' %}">
+      <!-- Style CSS -->
+      <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+      <!-- Responsive CSS -->
+      <link rel="stylesheet" href="{% static 'dashboard/css/responsive.css' %}">
+             {% block css %}{% endblock %}
+
+   </head>
+   <body>
+
+{% block content %}{% endblock %}
+      <!-- Optional JavaScript -->
+      <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+      <script src="{% static 'dashboard/js/jquery.min.js' %}"></script>
+      <script src="{% static 'dashboard/js/popper.min.js' %}"></script>
+      <script src="{% static 'dashboard/js/bootstrap.min.js' %}"></script>
+      <!-- Appear JavaScript -->
+      <script src="{% static 'dashboard/js/jquery.appear.js' %}"></script>
+      <!-- Countdown JavaScript -->
+      <script src="{% static 'dashboard/js/countdown.min.js' %}"></script>
+      <!-- Counterup JavaScript -->
+      <script src="{% static 'dashboard/js/waypoints.min.js' %}"></script>
+      <script src="{% static 'dashboard/js/jquery.counterup.min.js' %}"></script>
+      <!-- Wow JavaScript -->
+      <script src="{% static 'dashboard/js/wow.min.js' %}"></script>
+      <!-- Apexcharts JavaScript -->
+      <script src="{% static 'dashboard/js/apexcharts.js' %}"></script>
+      <!-- lottie JavaScript -->
+      <script src="{% static 'dashboard/js/lottie.js' %}"></script>
+      <!-- Slick JavaScript -->
+      <script src="{% static 'dashboard/js/slick.min.js' %}"></script>
+      <!-- Select2 JavaScript -->
+      <script src="{% static 'dashboard/js/select2.min.js' %}"></script>
+      <!-- Owl Carousel JavaScript -->
+      <script src="{% static 'dashboard/js/owl.carousel.min.js' %}"></script>
+      <!-- Magnific Popup JavaScript -->
+      <script src="{% static 'dashboard/js/jquery.magnific-popup.min.js' %}"></script>
+      <!-- Smooth Scrollbar JavaScript -->
+      <script src="{% static 'dashboard/js/smooth-scrollbar.js' %}"></script>
+      <!-- Style Customizer -->
+      <script src="{% static 'dashboard/js/style-customizer.js' %}"></script>
+      <!-- Chart Custom JavaScript -->
+      <script src="{% static 'dashboard/js/chart-custom.js' %}"></script>
+      <!-- Custom JavaScript -->
+      <script src="{% static 'dashboard/js/custom.js' %}"></script>
+
+   {% block js %}{% endblock %}
+
+   </body>
+</html>

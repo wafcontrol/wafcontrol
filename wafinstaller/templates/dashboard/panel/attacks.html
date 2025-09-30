@@ -1,0 +1,249 @@
+{% extends 'dashboard/main/main.html' %}
+{% load static %}
+{% block content %}
+    {% block title %}All Attacks - Owasp Wafcontrol{% endblock %}
+
+    <style>
+        .cell-truncate {
+            max-width: 360px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        @media (max-width: 1200px) {
+            .cell-truncate {
+                max-width: 280px
+            }
+        }
+
+        @media (max-width: 992px) {
+            .cell-truncate {
+                max-width: 200px
+            }
+        }
+
+        @media (max-width: 768px) {
+            .cell-truncate {
+                max-width: 160px
+            }
+        }
+
+        .uri-modal pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 0
+        }
+
+        .btn-icon {
+            padding: 2px 8px;
+            line-height: 1
+        }
+    </style>
+
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between align-items-center">
+                            <div class="iq-header-title">
+                                <h4 class="card-title mb-0">Detected WAF Attacks</h4>
+                                <small class="text-muted">This list updates automatically every 1 minute</small>
+                            </div>
+                        </div>
+
+                        <div class="iq-card-body">
+                            <form method="get" class="form-inline mb-3">
+                                <input type="text" name="ip" placeholder="IP" class="form-control mr-2"
+                                       value="{{ request.GET.ip }}">
+                                <input type="text" name="host" placeholder="Host/Domain" class="form-control mr-2"
+                                       value="{{ request.GET.host }}">
+                                <input type="text" name="rule_id" placeholder="Rule ID" class="form-control mr-2"
+                                       value="{{ request.GET.rule_id }}">
+                                <input type="date" name="start_date" class="form-control mr-2"
+                                       value="{{ request.GET.start_date }}">
+                                <input type="date" name="end_date" class="form-control mr-2"
+                                       value="{{ request.GET.end_date }}">
+                                <select name="status" class="form-control mr-2">
+                                    <option value="">All Status</option>
+                                    <option value="Blocked" {% if request.GET.status == 'Blocked' %}selected{% endif %}>
+                                        Blocked
+                                    </option>
+                                    <option value="Detected"
+                                            {% if request.GET.status == 'Detected' %}selected{% endif %}>Detected
+                                    </option>
+                                </select>
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </form>
+
+                            <p class="text-muted">Showing {{ filtered_count }} of {{ total_attacks }} total attacks.</p>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped text-center">
+                                    <thead class="thead-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Time</th>
+                                        <th>IP</th>
+                                        <th>Country</th>
+                                        <th>Rule ID</th>
+                                        <th>Message</th>
+                                        <th>Host</th>
+                                        <th>URI</th>
+                                        <th>Referer</th>
+                                        <th>Status</th>
+                                        <th>CRS Ver</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for attack in attacks %}
+                                        {% with idx=forloop.counter %}
+                                            <tr class="{{ attack.row_class }}">
+                                                <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                                <td>{{ attack.timestamp|date:"Y-m-d H:i:s" }}</td>
+                                                <td>{{ attack.ip }}</td>
+                                                <td>
+                                                    <img src="https://flagcdn.com/24x18/{{ attack.flag }}.png"
+                                                         onerror="this.src='https://flagcdn.com/24x18/xx.png';"
+                                                         alt="{{ attack.country }}"
+                                                         class="mr-1"
+                                                         style="vertical-align: middle; border-radius: 3px;"><br>
+                                                    {{ attack.country }}
+                                                </td>
+                                                <td>{{ attack.rule_id }}</td>
+                                                <td><span class="cell-truncate d-inline-block"
+                                                          title="{{ attack.message }}">{{ attack.message }}</span></td>
+                                                <td><span class="cell-truncate d-inline-block"
+                                                          title="{{ attack.host|default:'-' }}">{{ attack.host|default:"-" }}</span>
+                                                </td>
+
+                                                <td>
+                                                    <div class="btn-group" role="group" aria-label="URI actions">
+                                                        <button type="button" class="btn btn-sm btn-secondary btn-icon"
+                                                                data-toggle="modal" data-target="#uriModal-{{ idx }}">
+                                                            View
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-outline-secondary btn-icon"
+                                                                onclick="navigator.clipboard.writeText(`{{ attack.uri }}`)">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="modal fade uri-modal" id="uriModal-{{ idx }}"
+                                                         tabindex="-1" role="dialog"
+                                                         aria-labelledby="uriLabel-{{ idx }}" aria-hidden="true">
+                                                        <div class="modal-dialog modal-lg" role="document">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title" id="uriLabel-{{ idx }}">
+                                                                        Request Details</h5>
+                                                                    <button type="button" class="close"
+                                                                            data-dismiss="modal" aria-label="Close">
+                                                                        <span aria-hidden="true">&times;</span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="modal-body text-left">
+                                                                    <div class="mb-2">
+                                                                        <strong>Host:</strong> {{ attack.host|default:"-" }}
+                                                                    </div>
+                                                                    <div class="mb-2"><strong>URI:</strong>
+                                                                        <pre><code>{{ attack.uri }}</code></pre>
+                                                                    </div>
+                                                                    <div class="mb-2"><strong>Referer:</strong>
+                                                                        <pre><code>{{ attack.referer }}</code></pre>
+                                                                    </div>
+                                                                    <div class="mb-0"><strong>Message:</strong>
+                                                                        <pre><code>{{ attack.message }}</code></pre>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-light"
+                                                                            onclick="navigator.clipboard.writeText(`{{ attack.uri }}`)">
+                                                                        Copy URI
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-secondary"
+                                                                            data-dismiss="modal">Close
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td><span class="cell-truncate d-inline-block"
+                                                          title="{{ attack.referer }}">{{ attack.referer }}</span></td>
+                                                <td>
+                                                    {% if attack.status == "Blocked" %}
+                                                        <span class="badge badge-danger">Blocked</span>
+                                                    {% else %}
+                                                        <span class="badge badge-warning">Detected</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ attack.version }}</td>
+                                            </tr>
+                                        {% endwith %}
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="11" class="text-muted text-center">No attacks found in selected
+                                                range.
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {% if is_paginated %}
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-center mt-4">
+                                        {% if page_obj.has_previous %}
+                                            <li class="page-item"><a class="page-link" href="?
+                                                    {% if request.GET %}{{ request.GET.urlencode|cut:'page='|add:'&' }}{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                                        {% endif %}
+                                        {% if page_obj.number > 4 %}
+                                            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
+                                            {% if page_obj.number > 5 %}
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% for i in page_obj.paginator.page_range %}
+                                            {% if i >= page_obj.number|add:-2 and i <= page_obj.number|add:2 %}
+                                                {% if i == page_obj.number %}
+                                                    <li class="page-item active"><span class="page-link">{{ i }}</span>
+                                                    </li>
+                                                {% else %}
+                                                    <li class="page-item"><a class="page-link" href="?
+                                                            {% if request.GET %}{{ request.GET.urlencode|cut:'page='|add:'&' }}{% endif %}page={{ i }}">{{ i }}</a>
+                                                    </li>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if page_obj.number < page_obj.paginator.num_pages|add:-3 %}
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                            <li class="page-item"><a class="page-link"
+                                                                       href="?page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+                                            </li>
+                                        {% endif %}
+                                        {% if page_obj.has_next %}
+                                            <li class="page-item"><a class="page-link" href="?
+                                                    {% if request.GET %}{{ request.GET.urlencode|cut:'page='|add:'&' }}{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled"><span class="page-link">Next</span></li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            {% endif %}
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
