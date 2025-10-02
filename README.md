@@ -7,6 +7,34 @@ It simplifies installation, configuration, and operation of CRS and ModSecurity,
 
 WAFControl integrates rule management, attack monitoring, and configuration control into one centralized platform, making it easier to maintain strong web application security with reduced complexity.
 
+
+## How To Use
+
+The OWASP WAFControl installer automatically sets up **ModSecurity**, the **OWASP CRS**, and all required dependencies.  
+It is recommended to install WAFControl on a clean server where these components are not yet installed.  
+
+- If **Nginx** or **Apache** is not installed, the installer can install and configure them as well.  
+- WAFControl uses **PostgreSQL** as its database backend, which will also be installed and configured automatically.  
+- After installation, the web-based dashboard will be available to manage rules, monitor attacks, and configure CRS/ModSecurity.  
+
+### Quick Installation
+
+Run the following commands on your server:
+
+```bash
+curl -fsSL https://wafcontrol.org/download/install.sh -o install.sh
+```
+
+```bash
+chmod +x install.sh
+```
+
+```bash
+sudo ./install.sh
+```
+
+
+
 ## WAFControl Features
 
 - **Attack Control**:  
