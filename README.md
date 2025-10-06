@@ -7,7 +7,7 @@ It simplifies installation, configuration, and operation of CRS and ModSecurity,
 
 WAFControl integrates rule management, attack monitoring, and configuration control into one centralized platform, making it easier to maintain strong web application security with reduced complexity.
 
-![Attack](https://raw.githubusercontent.com/OWASP/www-project-wafcontrol/refs/heads/main/assets/images/attack-control.png)
+![Attack](https://raw.githubusercontent.com/OWASP/www-project-wafcontrol/refs/heads/main/assets/images/crs.png)
 
 ## How To Use
 
