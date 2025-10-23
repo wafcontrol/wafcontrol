@@ -39,9 +39,9 @@ sudo ./install.sh
 ## WAFControl Features
 
 - **Attack Control**:  
-  - Real-time logging of attacks with detailed information.  
-  - Dedicated **Critical WAF Attacks** section (e.g., SQLi, RCE, LFI).  
-  - **Top Attacker** overview based on frequency of attacks.  
+  - Real-time logging of attacks with detailed insights. 
+  - Dedicated **Critical WAF Attacks** section highlighting threats like SQL Injection (SQLi), Remote Code Execution (RCE), and Local File Inclusion (LFI).  
+  - **Top Attacker** dashboard to identify frequent attackers based on attack frequency.
 
 - **Rule Management**:  
   - Upload and edit CRS rules.  
