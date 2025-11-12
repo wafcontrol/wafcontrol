@@ -527,7 +527,7 @@ def extract_severity_from_log(block: str, rid: str) -> int:
             return 2
         elif family == "920":  # Protocol anomalies
             return 1
-        elif family in ("949", 959, 980):  # Anomaly score rules
+        elif family in ("949", "959", "980"):  # Anomaly score rules
             return 0
 
     return 2  # Default medium
