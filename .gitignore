@@ -20,3 +20,8 @@ __pycache__/
 
 # Django migrations (all apps)
 **/migrations/
+
+# Celery Beat scheduler files
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
