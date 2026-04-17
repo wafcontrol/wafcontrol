@@ -104,11 +104,13 @@
                                                 <td>{{ attack.timestamp|date:"Y-m-d H:i:s" }}</td>
                                                 <td>{{ attack.ip }}</td>
                                                 <td>
+                                                    {% if attack.flag and attack.flag != "xx" %}
                                                     <img src="https://flagcdn.com/24x18/{{ attack.flag }}.png"
-                                                         onerror="this.src='https://flagcdn.com/24x18/xx.png';"
+                                                         onerror="this.style.display='none';"
                                                          alt="{{ attack.country }}"
                                                          class="mr-1"
-                                                         style="vertical-align: middle; border-radius: 3px;"><br>
+                                                         style="vertical-align: middle; border-radius: 3px;">
+                                                    {% endif %}<br>
                                                     {{ attack.country }}
                                                 </td>
                                                 <td>{{ attack.rule_id }}</td>

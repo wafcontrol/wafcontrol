@@ -40,11 +40,13 @@
                                             <td>{{ forloop.counter }}</td>
                                             <td>{{ attacker.ip }}</td>
                                             <td>
+                                                {% if attacker.flag and attacker.flag|lower != "xx" %}
                                                 <img src="https://flagcdn.com/24x18/{{ attacker.flag|lower }}.png"
-                                                     onerror="this.src='https://flagcdn.com/24x18/xx.png';"
+                                                     onerror="this.style.display='none';"
                                                      alt="{{ attacker.country }}"
                                                      class="mr-1"
                                                      style="vertical-align: middle; border-radius: 3px;">
+                                                {% endif %}
                                                 {{ attacker.country }}
                                             </td>
                                             <td>{{ attacker.total }}</td>
