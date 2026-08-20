@@ -18,10 +18,18 @@ is_active() {
   pgrep -f "$svc" >/dev/null 2>&1
 }
 detect_server() {
+  if [[ -f /etc/apache2/mods-enabled/security2.conf && -f /etc/modsecurity/modsecurity.conf ]]; then
+    echo apache
+    return
+  fi
+  if [[ -f /etc/nginx/modsec/main.conf ]]; then
+    echo nginx
+    return
+  fi
   is_active nginx && { echo nginx; return; }
   is_active apache2 && { echo apache; return; }
-  command -v nginx >/dev/null 2>&1 && { echo nginx; return; }
   (command -v apache2ctl >/dev/null 2>&1 || command -v apache2 >/dev/null 2>&1) && { echo apache; return; }
+  command -v nginx >/dev/null 2>&1 && { echo nginx; return; }
   echo none
 }
 get_crs_version_nginx() {
@@ -29,6 +37,11 @@ get_crs_version_nginx() {
   [[ -f "$conf" ]] && grep -Eo 'coreruleset-[0-9]+\.[0-9]+(\.[0-9]+)?' "$conf" | head -n1 | sed 's/coreruleset-//'
 }
 get_crs_version_apache() {
+  local current="/etc/modsecurity/crs/current"
+  if [[ -L "$current" ]]; then
+    readlink -f "$current" | grep -Eo 'coreruleset-([0-9]+\.[0-9]+(\.[0-9]+)?)' | sed 's/coreruleset-//'
+    return
+  fi
   local setup="/etc/modsecurity/crs-setup.conf"
   if [[ -L "$setup" ]]; then
     readlink -f "$setup" | grep -Eo 'modsecurity-crs-([0-9]+\.[0-9]+(\.[0-9]+)?)' | sed 's/.*modsecurity-crs-//'

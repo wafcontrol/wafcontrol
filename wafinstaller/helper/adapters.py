@@ -27,8 +27,8 @@ NGINX_PATHS = Paths(
 APACHE_PATHS = Paths(
     name="apache",
     modsec_conf="/etc/modsecurity/modsecurity.conf",
-    rules_dir_tmpl="/usr/share/modsecurity-crs-{ver}/rules",
-    custom_after_tmpl="/usr/share/modsecurity-crs-{ver}/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf",
+    rules_dir_tmpl="/etc/modsecurity/crs/versions/coreruleset-{ver}/rules",
+    custom_after_tmpl="/etc/modsecurity/crs/versions/coreruleset-{ver}/rules/RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf",
     audit_log="/var/log/modsec_audit.log",
     test_cmd=["apache2ctl", "configtest"],
     reload_cmd=["apache2ctl", "-k", "graceful"],
@@ -36,7 +36,7 @@ APACHE_PATHS = Paths(
 
 def _run_basic_script():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    script = os.path.join(base_dir, "../../scripts", "basic.sh")
+    script = os.path.join(os.path.dirname(base_dir), "scripts", "basic.sh")
     try:
         out = subprocess.check_output(["/bin/bash", script], text=True, stderr=subprocess.STDOUT)
         return json.loads(out)
@@ -64,7 +64,14 @@ def detect_crs_version():
                 return m.group(1)
     except Exception:
         pass
-    # Fallback Apache
+    # Fallback Apache: resolve the active CRS version via the "current" symlink
+    try:
+        current = os.path.realpath("/etc/modsecurity/crs/current")
+        m = re.search(r'coreruleset-([0-9]+\.[0-9]+(?:\.[0-9]+)?)', current)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
     try:
         setup = os.path.realpath("/etc/modsecurity/crs-setup.conf")
         m = re.search(r'modsecurity-crs-([0-9]+\.[0-9]+(?:\.[0-9]+)?)', setup)

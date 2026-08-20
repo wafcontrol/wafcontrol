@@ -438,17 +438,18 @@ class CRSRuleListView(LoginRequiredMixin, TemplateView):
         version = get_crs_full_version()
         rule_dir = get_rules_dir(version)
         files = []
+        rule_error = ""
         try:
             if rule_dir and os.path.isdir(rule_dir):
                 for filename in sorted(os.listdir(rule_dir)):
                     if filename.endswith((".conf", ".data")):
                         files.append(filename)
             else:
-                files.append(f"[Directory not found]: {rule_dir}")
+                rule_error = f"Directory not found: {rule_dir}"
         except Exception as e:
-            files.append(f"[Error]: {str(e)}")
+            rule_error = str(e)
 
-        context.update({"crs_version": version, "rule_files": files})
+        context.update({"crs_version": version, "rule_files": files, "rule_error": rule_error})
         return context
 
 
