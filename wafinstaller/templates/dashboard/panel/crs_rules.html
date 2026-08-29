@@ -14,6 +14,9 @@
                             </div>
                         </div>
                         <div class="iq-card-body">
+                            {% if rule_error %}
+                                <div class="alert alert-warning">{{ rule_error }}</div>
+                            {% endif %}
                             {% if rule_files %}
                                 <div class="table-responsive">
                                     <table id="datatable" class="table table-striped table-bordered">
