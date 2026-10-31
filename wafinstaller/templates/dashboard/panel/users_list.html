@@ -1,0 +1,87 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}Users Management - Owasp Wafcontrol{% endblock %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-12">
+
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+                    {% endfor %}
+
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">Users Management</h4>
+                            </div>
+                            <a href="{% url 'wafinstaller:user_add' %}" class="btn btn-sm btn-success align-self-center">+ Add User</a>
+                        </div>
+                        <div class="iq-card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Username</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>2FA</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for u in users %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>
+                                                {{ u.username }}
+                                                {% if u.pk == request.user.pk %}<span class="badge badge-info">You</span>{% endif %}
+                                            </td>
+                                            <td>{{ u.get_full_name|default:"-" }}</td>
+                                            <td>{{ u.email|default:"-" }}</td>
+                                            <td>
+                                                {% if u.is_active %}
+                                                    <span class="badge badge-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge badge-secondary">Disabled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if u.two_factor %}
+                                                    <span class="badge badge-success">On</span>
+                                                {% else %}
+                                                    <span class="badge badge-light">Off</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ u.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
+                                            <td class="text-nowrap">
+                                                <a href="{% url 'wafinstaller:user_edit' u.pk %}" class="btn btn-sm btn-primary">Edit</a>
+                                                {% if u.pk != request.user.pk %}
+                                                    <form method="post" action="{% url 'wafinstaller:user_delete' u.pk %}"
+                                                          class="d-inline"
+                                                          onsubmit="return confirm('Delete user {{ u.username|escapejs }}?');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                                    </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="8" class="text-center text-muted">No users found.</td></tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <small class="text-muted">All panel users are administrators. You cannot delete or
+                                disable your own account, or the last active administrator.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

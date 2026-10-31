@@ -73,7 +73,7 @@ if [[ ! -f "$MDIR/modsecurity.conf" ]]; then
     cp /etc/modsecurity/modsecurity.conf-recommended "$MDIR/modsecurity.conf"
   elif [[ -f /usr/share/doc/modsecurity-crs/examples/modsecurity.conf-recommended ]]; then
     cp /usr/share/doc/modsecurity-crs/examples/modsecurity.conf-recommended "$MDIR/modsecurity.conf"
-  elif [[ -f /usr/share/doc/modsecurity-crs/examples/modsecurity.conf-recommended.gz" ]]; then
+  elif [[ -f /usr/share/doc/modsecurity-crs/examples/modsecurity.conf-recommended.gz ]]; then
     zcat /usr/share/doc/modsecurity-crs/examples/modsecurity.conf-recommended.gz > "$MDIR/modsecurity.conf"
   else
     wget -qO "$MDIR/modsecurity.conf" "https://raw.githubusercontent.com/SpiderLabs/ModSecurity/v3/master/modsecurity.conf-recommended" || true
@@ -121,13 +121,9 @@ RULES="${TGT}/rules"
 for f in REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf; do
   [[ -f "${RULES}/${f}" ]] || { [[ -f "${RULES}/${f}.example" ]] && cp "${RULES}/${f}.example" "${RULES}/${f}" || true; }
 done
-if [[ -f "${RULES}/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf" ]] && ! grep -q '/crs/rules/save/' "${RULES}/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"; then
-  cat >> "${RULES}/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf" <<'EOR'
-# WAF dashboard exclusions
-SecRule REQUEST_URI "@beginsWith /crs/rules/save/"        "id:1500010,phase:1,nolog,pass,ctl:ruleEngine=Off"
-SecRule REQUEST_URI "@beginsWith /dashboard/crs/settings/" "id:1500011,phase:1,nolog,pass,ctl:ruleEngine=Off"
-EOR
-fi
+# Dashboard exclusions are scoped to the panel vhost (scripts/panel_waf_exclusions.sh), never global:
+# a global REQUEST_URI exclusion turned the WAF off for those paths on every protected site.
+sed -i -E '/id:15000(10|11)\b/d; /^# (WAF dashboard exclusions|Exclude WAF dashboard endpoints)$/d' "${RULES}/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf" 2>/dev/null || true
 
 ln -sfn "$TGT" "$CRS_CURRENT"
 chmod -R a+rX "$CRS_ROOT"
@@ -250,3 +246,6 @@ fi
 
 state_append_array CREATED_FILES "$APACHE_CONF"
 say "Apache vhost ready."
+
+# Panel exclusions, scoped to the panel vhost only (config text would otherwise be blocked by CRS).
+bash "$(dirname "${BASH_SOURCE[0]}")/panel_waf_exclusions.sh" || warn "Could not apply panel WAF exclusions; run scripts/panel_waf_exclusions.sh."

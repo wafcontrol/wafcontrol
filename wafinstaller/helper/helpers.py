@@ -88,6 +88,7 @@ def run_basic_script() -> Dict[str, Any]:
             stderr=subprocess.PIPE,
             text=True,
             check=False,
+            timeout=20,
         )
         data = _safe_json_loads((result.stdout or "").strip())
         # Ensure minimum shape even if script returns partial data
@@ -145,6 +146,9 @@ def run_switch_version_script(version: str, reinstall: bool = False) -> Tuple[in
         cmd.append("--reinstall")
     try:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
-        return proc.returncode, (proc.stderr.strip() or proc.stdout.strip())
+        if proc.returncode == 0:
+            return 0, proc.stdout.strip()
+        # Progress lines go to stdout, the reason to stderr: show both so the cause is visible.
+        return proc.returncode, "\n".join(x for x in (proc.stdout.strip(), proc.stderr.strip()) if x)
     except Exception as e:
         return 1, f"Error: {e}"

@@ -5,5 +5,5 @@ class WafinstallerConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'wafinstaller'
 
-def ready(self):
-    import wafinstaller.signals
+    def ready(self):
+        import wafinstaller.signals  # noqa: F401

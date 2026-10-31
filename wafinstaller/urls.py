@@ -8,7 +8,11 @@ from wafinstaller.views import (
     ServerTrafficAnalysisView, TopAttackersView, CrsVersionListView, CrsSwitchVersionView,
     ModSecuritySettingsView, CustomRulesView, AddCustomRuleView, DeleteCustomRuleView,
     EditCustomRuleView, AppSettingsView, AdminProfileView, Verify2FAView,
-    CustomLogoutView, HomeRedirectView, CrsUpdateSyncView, ForceFetchCrsVersionsView
+    CustomLogoutView, HomeRedirectView, CrsUpdateSyncView, ForceFetchCrsVersionsView,
+    ServerConfListView, ServerConfReadView, ServerConfSaveView,
+    UserListView, UserCreateView, UserEditView, UserDeleteView,
+    SyslogConfigView, IpListListView, IpListCreateView, IpListEditView, IpListDeleteView,
+    IpListRefreshGeoView, AttackRequestView
 )
 
 app_name = 'wafinstaller'
@@ -31,6 +35,7 @@ urlpatterns = [
     # Attacks
     path('dashboard/attacks/', WafAttacksView.as_view(), name='waf_attacks'),
     path('dashboard/critical/', CriticalWafAttacksView.as_view(), name='critical_attacks'),
+    path('dashboard/attacks/<int:attack_id>/request/', AttackRequestView.as_view(), name='attack_request'),
     path('dashboard/top-attacker/', TopAttackersView.as_view(), name='top-attacker'),
 
     # CRS Rules – browse & edit
@@ -55,6 +60,27 @@ urlpatterns = [
     path('dashboard/crs/custom-rules/add/', AddCustomRuleView.as_view(), name="add_custom_rule"),
     path('custom-rules/delete/<int:rule_id>/', DeleteCustomRuleView.as_view(), name="delete_custom_rule"),
     path("custom-rules/edit/<str:rule_id>/", EditCustomRuleView.as_view(), name="edit_custom_rule"),
+
+    # Web server config files (server = nginx | apache)
+    path('dashboard/<str:server>/conf/', ServerConfListView.as_view(), name='server_conf'),
+    path('<str:server>/conf/view/<str:filename>/', ServerConfReadView.as_view(), name='server_conf_view'),
+    path('<str:server>/conf/save/<str:filename>/', ServerConfSaveView.as_view(), name='server_conf_save'),
+
+    # Users management
+    path('dashboard/users/', UserListView.as_view(), name='users'),
+    path('dashboard/users/add/', UserCreateView.as_view(), name='user_add'),
+    path('dashboard/users/<int:user_id>/', UserEditView.as_view(), name='user_edit'),
+    path('dashboard/users/<int:user_id>/delete/', UserDeleteView.as_view(), name='user_delete'),
+
+    # IP lists
+    path('dashboard/ip-lists/', IpListListView.as_view(), name='ip_lists'),
+    path('dashboard/ip-lists/add/', IpListCreateView.as_view(), name='ip_list_add'),
+    path('dashboard/ip-lists/<int:list_id>/', IpListEditView.as_view(), name='ip_list_edit'),
+    path('dashboard/ip-lists/refresh-geo/', IpListRefreshGeoView.as_view(), name='ip_lists_refresh_geo'),
+    path('dashboard/ip-lists/<int:list_id>/delete/', IpListDeleteView.as_view(), name='ip_list_delete'),
+
+    # Syslog
+    path('dashboard/syslog/', SyslogConfigView.as_view(), name='syslog_config'),
 
     # App config + Admin profile
     path("dashboard/settings/", AppSettingsView.as_view(), name="app_settings"),

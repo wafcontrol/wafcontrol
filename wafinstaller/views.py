@@ -13,11 +13,12 @@ from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView as DjangoLogoutView
-from django.db import models
+from django.core.cache import cache
+from django.db import models, transaction
 from django.db.models import Q, Count
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -37,7 +38,11 @@ from wafinstaller.helper.crs import (
     load_app_settings,
     save_app_settings,
 )
-from .forms import AdminLogin, AdminPasswordForm, AdminProfileForm
+from .forms import (
+    AdminLogin, AdminPasswordForm, AdminProfileForm,
+    UserCreateForm, UserEditForm, UserSetPasswordForm, SyslogConfigForm,
+    IpListForm,
+)
 from wafinstaller.helper.helpers import (
     get_installed_crs_version,
     get_latest_crs_version,
@@ -46,9 +51,14 @@ from wafinstaller.helper.helpers import (
     run_switch_version_script,
     run_updatecrs_script,
 )
-from .models import Attack, CrsVersion, DashboardStat, UserProfile
-from .tasks import fetch_crs_versions_task, run_waf_install
+from .models import Attack, CrsVersion, DashboardStat, IpList, UserProfile
+from .tasks import CrsFetchError, fetch_crs_versions, fetch_crs_versions_task, run_waf_install
 from wafinstaller.helper.utils import get_crs_full_version, get_rules_dir
+from wafinstaller.helper.server_conf import ServerConfError, get_conf_manager
+from wafinstaller.helper.users import UserManagementError, UserManagementService
+from wafinstaller.helper.geo_index import GeoIndex
+from wafinstaller.helper.ip_lists import WRITERS, IpListError, IpListService
+from wafinstaller.helper.syslog import WARNING, SyslogConfig, SyslogService, client_ip
 
 User = get_user_model()
 
@@ -123,6 +133,8 @@ class Verify2FAView(View):
 
         totp = pyotp.TOTP(secret)
         if not totp.verify(code):
+            SyslogService.audit("2fa_failed", username=user.get_username(),
+                                ip=client_ip(request), severity=WARNING)
             messages.error(request, _("Invalid 2FA code. Please try again."))
             return render(request, self.template_name)
 
@@ -272,7 +284,7 @@ class WafAttacksView(LoginRequiredMixin, ListView):
     login_url = "wafinstaller:login"
 
     def get_queryset(self):
-        qs = Attack.objects.all().order_by("-timestamp")
+        qs = Attack.objects.select_related("request").order_by("-timestamp")
         ip = self.request.GET.get("ip")
         rule_id = self.request.GET.get("rule_id")
         status = self.request.GET.get("status")
@@ -321,6 +333,30 @@ class WafAttacksView(LoginRequiredMixin, ListView):
         return context
 
 
+class AttackRequestView(LoginRequiredMixin, View):
+    """JSON with the HTTP request stored for one attack (loaded on demand by the details window)."""
+    login_url = "wafinstaller:login"
+
+    def get(self, request, attack_id):
+        attack = Attack.objects.select_related("request").filter(pk=attack_id).first()
+        if attack is None:
+            raise Http404("Attack not found")
+        req = attack.request
+        if req is None:
+            return JsonResponse({"available": False})
+        return JsonResponse({
+            "available": True,
+            "unique_id": req.unique_id,
+            "method": req.method,
+            "protocol": req.protocol,
+            "user_agent": req.user_agent,
+            "headers": req.headers,
+            "cookies": req.cookies,
+            "body": req.body,
+            "body_truncated": req.body_truncated,
+        })
+
+
 class TopAttackersView(LoginRequiredMixin, ListView):
     template_name = "dashboard/panel/top_attackers.html"
     context_object_name = "attackers"
@@ -362,7 +398,7 @@ class CriticalWafAttacksView(LoginRequiredMixin, ListView):
         for rid in self.NOISE_RULES:
             q &= ~Q(rule_id=rid)
 
-        attacks = Attack.objects.filter(q).order_by("-timestamp")
+        attacks = Attack.objects.select_related("request").filter(q).order_by("-timestamp")
 
         # Apply filters from GET parameters
         ip = self.request.GET.get("ip")
@@ -774,10 +810,21 @@ class ServerTrafficAnalysisView(LoginRequiredMixin, TemplateView):
 class CrsVersionListView(LoginRequiredMixin, View):
     login_url = "wafinstaller:login"
 
+    AUTO_FETCH_EVERY = 600  # seconds between automatic fetches while the list is empty
+
     def get(self, request):
         versions = CrsVersion.objects.order_by("-published_at")
         installed_version = get_installed_crs_version()
         latest_version = get_latest_crs_version()
+
+        if not versions.exists() and cache.add("crs_versions_auto_fetch", 1, self.AUTO_FETCH_EVERY):
+            # Fresh install: don't wait up to 12h for the scheduled fetch.
+            try:
+                fetch_crs_versions_task.delay()
+                messages.info(request, "No CRS versions fetched yet: fetching them now in the background. "
+                                       "Refresh in a few seconds, or use Force Fetch to see any error.")
+            except Exception:
+                pass
 
         for v in versions:
             v.normalized_tag = normalize_version(v.tag)
@@ -787,7 +834,7 @@ class CrsVersionListView(LoginRequiredMixin, View):
             "dashboard/panel/crs_versions.html",
             {
                 "versions": versions,
-                "fetched_at": versions.first().fetched_at if versions else "N/A",
+                "fetched_at": versions.aggregate(last=models.Max("fetched_at"))["last"] or "N/A",
                 "installed_version": installed_version,
                 "latest_version": latest_version,
             },
@@ -1256,12 +1303,384 @@ class AdminProfileView(LoginRequiredMixin, View):
 # Force-fetch CRS versions
 # -------------------------
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ForceFetchCrsVersionsView(View):
+class ForceFetchCrsVersionsView(LoginRequiredMixin, View):
+    login_url = "wafinstaller:login"
+
     def post(self, request):
         try:
-            fetch_crs_versions_task()
-            messages.success(request, "Successfully fetched the latest CRS versions.")
+            count = fetch_crs_versions()
+            messages.success(request, f"Fetched {count} CRS versions. Latest: {get_latest_crs_version()}.")
+        except CrsFetchError as e:
+            messages.error(request, f"Failed to fetch CRS versions: {e}")
         except Exception as e:
             messages.error(request, f"Failed to fetch CRS versions: {e}")
         return redirect("wafinstaller:crs_version")
+
+
+# -------------------------
+# Web server config files (nginx conf.d / apache sites)
+# -------------------------
+
+class ServerConfMixin(LoginRequiredMixin):
+    """Resolve the config manager for the `server` URL kwarg (nginx | apache)."""
+    login_url = "wafinstaller:login"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.manager = get_conf_manager(kwargs.get("server", ""))
+        if self.manager is None:
+            raise Http404("Unknown server")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class ServerConfListView(ServerConfMixin, View):
+    """List *.conf files of the web server and create new ones."""
+    template_name = "dashboard/panel/server_conf.html"
+
+    def get(self, request, server):
+        manager = self.manager
+        context = {
+            "server": server,
+            "server_label": manager.label,
+            "conf_dir": manager.conf_dir,
+            "supports_enable": manager.SUPPORTS_ENABLE,
+            "default_template": manager.DEFAULT_TEMPLATE,
+            "conf_files": [],
+            "conf_error": "",
+        }
+        if not manager.is_installed():
+            context["conf_error"] = f"{manager.label} is not installed on this server."
+        else:
+            try:
+                context["conf_files"] = manager.list_files()
+            except (ServerConfError, OSError) as e:
+                context["conf_error"] = str(e)
+        return render(request, self.template_name, context)
+
+    def post(self, request, server):
+        name = request.POST.get("filename", "").strip()
+        content = request.POST.get("content", "")
+        enable = request.POST.get("enable") == "on"
+        try:
+            result = self.manager.create(name, content, enable=enable)
+            messages.success(request, f"{name} created. {result}")
+        except (ServerConfError, OSError) as e:
+            messages.error(request, str(e))
+        return redirect("wafinstaller:server_conf", server=server)
+
+
+class ServerConfReadView(ServerConfMixin, View):
+
+    def get(self, request, server, filename):
+        try:
+            return JsonResponse({"success": True, "content": self.manager.read(filename)})
+        except (ServerConfError, OSError) as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+
+class ServerConfSaveView(ServerConfMixin, View):
+
+    def post(self, request, server, filename):
+        try:
+            data = json.loads(request.body or b"{}")
+            message = self.manager.save(filename, data.get("content", ""))
+            return JsonResponse({"success": True, "message": message})
+        except (ServerConfError, OSError, ValueError) as e:
+            return JsonResponse({"success": False, "error": str(e)})
+
+
+# -------------------------
+# Users management
+# -------------------------
+
+class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = "wafinstaller:login"
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+
+class UserListView(SuperuserRequiredMixin, View):
+    template_name = "dashboard/panel/users_list.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {
+            "users": UserManagementService.list_users(),
+        })
+
+
+class UserCreateView(SuperuserRequiredMixin, View):
+    template_name = "dashboard/panel/user_form.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": UserCreateForm(), "is_new": True})
+
+    def post(self, request):
+        form = UserCreateForm(request.POST)
+        if form.is_valid():
+            user = UserManagementService(request.user).create(form)
+            messages.success(request, f"User '{user.username}' created.")
+            return redirect("wafinstaller:users")
+        return render(request, self.template_name, {"form": form, "is_new": True})
+
+
+class UserEditView(SuperuserRequiredMixin, View):
+    """Edit details, set a new password, or reset 2FA for one user."""
+    template_name = "dashboard/panel/user_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.target = UserManagementService.get_user(kwargs.get("user_id"))
+        if self.target is None and request.user.is_authenticated:
+            raise Http404("User not found")
+        return super().dispatch(request, *args, **kwargs)
+
+    def _render(self, request, form=None, password_form=None):
+        return render(request, self.template_name, {
+            "is_new": False,
+            "target": self.target,
+            "form": form or UserEditForm(instance=self.target),
+            "password_form": password_form or UserSetPasswordForm(user=self.target),
+            "two_factor": UserManagementService.two_factor_enabled(self.target),
+        })
+
+    def get(self, request, user_id):
+        return self._render(request)
+
+    def post(self, request, user_id):
+        service = UserManagementService(request.user)
+        target = self.target
+
+        if "update_user" in request.POST:
+            form = UserEditForm(request.POST, instance=target)
+            if not form.is_valid():
+                return self._render(request, form=form)
+            try:
+                service.update(target, form)
+                messages.success(request, "User updated.")
+            except UserManagementError as e:
+                messages.error(request, str(e))
+
+        elif "set_password" in request.POST:
+            password_form = UserSetPasswordForm(user=target, data=request.POST)
+            if not password_form.is_valid():
+                return self._render(request, password_form=password_form)
+            user = service.set_password(password_form)
+            if user.pk == request.user.pk:
+                update_session_auth_hash(request, user)
+            messages.success(request, "Password updated.")
+
+        elif "reset_2fa" in request.POST:
+            service.reset_two_factor(target)
+            messages.success(request, "Two-factor authentication reset.")
+
+        return redirect("wafinstaller:user_edit", user_id=target.pk)
+
+
+class UserDeleteView(SuperuserRequiredMixin, View):
+
+    def post(self, request, user_id):
+        target = UserManagementService.get_user(user_id)
+        if target is None:
+            raise Http404("User not found")
+        try:
+            username = UserManagementService(request.user).delete(target)
+            messages.success(request, f"User '{username}' deleted.")
+        except UserManagementError as e:
+            messages.error(request, str(e))
+        return redirect("wafinstaller:users")
+
+
+# -------------------------
+# Syslog forwarding config
+# -------------------------
+
+class SyslogConfigView(SuperuserRequiredMixin, View):
+    template_name = "dashboard/panel/syslog_config.html"
+
+    def _render(self, request, form):
+        return render(request, self.template_name, {
+            "form": form, "saved_enabled": SyslogService.config().enabled,
+        })
+
+    def get(self, request):
+        return self._render(request, SyslogConfigForm(initial=SyslogService.config().as_dict()))
+
+    def post(self, request):
+        form = SyslogConfigForm(request.POST)
+        if not form.is_valid():
+            return self._render(request, form)
+
+        new = SyslogConfig(**form.cleaned_data)
+
+        if "test" in request.POST:
+            if not new.host:
+                messages.error(request, "Enter a syslog server to test.")
+            else:
+                try:
+                    SyslogService.test(new)
+                    messages.success(request, f"Test message sent to {new.host}:{new.port} ({new.protocol.upper()}).")
+                except OSError as e:
+                    messages.error(request, f"Failed to send test message: {e}")
+            return self._render(request, form)
+
+        old = SyslogService.config()
+        if old.enabled and not new.enabled:
+            # Report the shutdown with the old config: the audit middleware can't once it's off.
+            SyslogService.audit("syslog_disabled", username=request.user.get_username(),
+                                ip=client_ip(request), severity=WARNING, config=old, sync=True)
+        SyslogService.save_config(new)
+        messages.success(request, "Syslog settings saved.")
+        return redirect("wafinstaller:syslog_config")
+
+
+# -------------------------
+# IP lists (allow / deny include files)
+# -------------------------
+
+class IpListMixin(SuperuserRequiredMixin):
+
+    REQUIRED_COLUMNS = {"kind", "countries"}
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not self.table_ready():
+            return render(request, "dashboard/panel/ip_lists.html", {
+                "missing_table": True, "servers": self.server_paths(),
+            })
+        return super().dispatch(request, *args, **kwargs)
+
+    @classmethod
+    def table_ready(cls):
+        """IpList is a newer model: its table/columns exist only after `migrate` was run on update."""
+        from django.db import connection
+        try:
+            table = IpList._meta.db_table
+            if table not in connection.introspection.table_names():
+                return False
+            with connection.cursor() as cursor:
+                columns = {c.name for c in connection.introspection.get_table_description(cursor, table)}
+            return cls.REQUIRED_COLUMNS <= columns
+        except Exception:
+            return False
+
+    @staticmethod
+    def server_paths(ip_list=None):
+        """Per web server: label, install state and the file / variable a site config references."""
+        name = ip_list.name if ip_list else "<name>"
+        variable = ip_list.nginx_variable if ip_list else "wafc_geo_<name>"
+        return [
+            {"key": w.key, "label": w.label, "installed": w.is_available(),
+             "path": os.path.join(w.base_dir(), f"{name}.conf"), "variable": variable}
+            for w in WRITERS
+        ]
+
+    @staticmethod
+    def form_kwargs():
+        GeoIndex.ensure_async()
+        return {"country_names": GeoIndex.country_names()}
+
+    @staticmethod
+    def geo_state():
+        return {"geo_available": GeoIndex.available(), "geo_ready": GeoIndex.is_ready()}
+
+    def _save(self, request, form):
+        """Save the list and publish its include files atomically. Returns the list or None."""
+        try:
+            with transaction.atomic():
+                ip_list = form.save()
+                results = IpListService().publish(ip_list)
+        except IpListError as e:
+            messages.error(request, str(e))
+            return None
+        messages.success(request, f"IP list '{ip_list.name}' saved. " + " ".join(results))
+        return ip_list
+
+
+class IpListListView(IpListMixin, View):
+    template_name = "dashboard/panel/ip_lists.html"
+
+    def get(self, request):
+        GeoIndex.ensure_async()
+        return render(request, self.template_name, {
+            "ip_lists": IpList.objects.all(),
+            "has_geo_lists": IpList.objects.filter(kind=IpList.KIND_GEO).exists(),
+            "servers": self.server_paths(),
+            **self.geo_state(),
+        })
+
+
+class IpListCreateView(IpListMixin, View):
+    template_name = "dashboard/panel/ip_list_form.html"
+
+    def _render(self, request, form):
+        return render(request, self.template_name, {"form": form, "is_new": True, **self.geo_state()})
+
+    def get(self, request):
+        initial = {"kind": request.GET.get("kind", IpList.KIND_IP)}
+        return self._render(request, IpListForm(initial=initial, **self.form_kwargs()))
+
+    def post(self, request):
+        form = IpListForm(request.POST, **self.form_kwargs())
+        if form.is_valid():
+            ip_list = self._save(request, form)
+            if ip_list:
+                return redirect("wafinstaller:ip_list_edit", list_id=ip_list.pk)
+        return self._render(request, form)
+
+
+class IpListEditView(IpListMixin, View):
+    template_name = "dashboard/panel/ip_list_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.table_ready():
+            self.ip_list = IpList.objects.filter(pk=kwargs.get("list_id")).first()
+            if self.ip_list is None and request.user.is_authenticated:
+                raise Http404("IP list not found")
+        return super().dispatch(request, *args, **kwargs)
+
+    def _render(self, request, form):
+        # Reload so a failed save doesn't show unsaved values as the guide's state.
+        ip_list = IpList.objects.get(pk=self.ip_list.pk)
+        return render(request, self.template_name, {
+            "form": form, "is_new": False, "ip_list": ip_list,
+            "servers": self.server_paths(ip_list), **self.geo_state(),
+        })
+
+    def get(self, request, list_id):
+        return self._render(request, IpListForm(instance=self.ip_list, **self.form_kwargs()))
+
+    def post(self, request, list_id):
+        form = IpListForm(request.POST, instance=self.ip_list, **self.form_kwargs())
+        if form.is_valid() and self._save(request, form):
+            return redirect("wafinstaller:ip_list_edit", list_id=list_id)
+        return self._render(request, form)
+
+
+class IpListDeleteView(IpListMixin, View):
+
+    def post(self, request, list_id):
+        ip_list = IpList.objects.filter(pk=list_id).first()
+        if ip_list is None:
+            raise Http404("IP list not found")
+        try:
+            IpListService().remove(ip_list)
+        except IpListError as e:
+            messages.error(request, f"Cannot delete '{ip_list.name}': it is probably still used "
+                                    f"by a server config. Remove the include / if line first.\n{e}")
+            return redirect("wafinstaller:ip_lists")
+        name = ip_list.name
+        ip_list.delete()
+        messages.success(request, f"IP list '{name}' deleted.")
+        return redirect("wafinstaller:ip_lists")
+
+
+class IpListRefreshGeoView(IpListMixin, View):
+    """Re-generate every geo list, e.g. after the GeoIP database was updated."""
+
+    def post(self, request):
+        done, failed = IpListService().refresh_geo(IpList.objects.filter(kind=IpList.KIND_GEO))
+        if done:
+            messages.success(request, f"Geo lists refreshed: {', '.join(done)}.")
+        for error in failed:
+            messages.error(request, error)
+        if not done and not failed:
+            messages.info(request, "There are no geo lists to refresh.")
+        return redirect("wafinstaller:ip_lists")

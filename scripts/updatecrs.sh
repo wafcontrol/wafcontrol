@@ -101,20 +101,9 @@ if [[ -f "$EXCL_999_EX" && ! -f "$EXCL_999" ]]; then
   cp "$EXCL_999_EX" "$EXCL_999"
 fi
 
-# Inject WAF dashboard exclusions into 900-file
-if [[ -f "$EXCL_900" ]]; then
-  if ! grep -q '/crs/rules/save/' "$EXCL_900"; then
-    cat >> "$EXCL_900" <<'EOR'
-
-# Exclude WAF dashboard endpoints
-SecRule REQUEST_URI "@beginsWith /crs/rules/save/" "id:1500010,phase:1,nolog,pass,ctl:ruleEngine=Off"
-SecRule REQUEST_URI "@beginsWith /dashboard/crs/settings/" "id:1500011,phase:1,nolog,pass,ctl:ruleEngine=Off"
-EOR
-    echo "[✓] Dashboard exclusions added to REQUEST-900."
-  else
-    echo "[=] Dashboard exclusions already present."
-  fi
-fi
+# Dashboard exclusions are scoped to the panel vhost (scripts/panel_waf_exclusions.sh), never global:
+# a global REQUEST_URI exclusion turned the WAF off for those paths on every protected site.
+sed -i -E '/id:15000(10|11)\b/d; /^# (WAF dashboard exclusions|Exclude WAF dashboard endpoints)$/d' "$EXCL_900" 2>/dev/null || true
 
 # Rewrite main.conf to point to THIS version
 echo "[+] Updating $MAIN_CONF"

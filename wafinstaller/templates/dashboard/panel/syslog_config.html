@@ -1,0 +1,94 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}Syslog Config - Owasp Wafcontrol{% endblock %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">Syslog Forwarding</h4>
+                            </div>
+                            <div class="align-self-center">
+                                {% if saved_enabled %}
+                                    <span class="badge badge-success">Enabled</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">Disabled</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="iq-card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                <div class="custom-control custom-switch mb-4">
+                                    <input type="checkbox" class="custom-control-input" id="{{ form.enabled.id_for_label }}"
+                                           name="{{ form.enabled.html_name }}" {% if form.enabled.value %}checked{% endif %}>
+                                    <label class="custom-control-label" for="{{ form.enabled.id_for_label }}">
+                                        <strong>{{ form.enabled.label }}</strong>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="{{ form.host.id_for_label }}">{{ form.host.label }}</label>
+                                    {{ form.host }}
+                                    <small class="form-text text-muted">{{ form.host.help_text }}</small>
+                                    {% for error in form.host.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                </div>
+                                <div class="row">
+                                    {% for field in form %}
+                                        {% if field.name == 'port' or field.name == 'protocol' or field.name == 'facility' or field.name == 'format' or field.name == 'app_name' %}
+                                            <div class="col-md-4 form-group">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                                {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+
+                                <h6 class="mt-2 mb-3">Events to send</h6>
+                                {% for field in form %}
+                                    {% if field.name == 'send_attacks' or field.name == 'send_audit' %}
+                                        <div class="form-check mb-2">
+                                            {{ field }}
+                                            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <div class="mt-4">
+                                    <button type="submit" name="save" class="btn btn-primary">Save Settings</button>
+                                    <button type="submit" name="test" class="btn btn-outline-secondary">Send Test Message</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="iq-card">
+                        <div class="iq-card-header">
+                            <div class="iq-header-title"><h4 class="card-title">What is sent</h4></div>
+                        </div>
+                        <div class="iq-card-body small">
+                            <p><strong>WAF attacks</strong> &mdash; every new attack detected: IP, country, host, URI,
+                                rule ID, message, severity and anomaly score. Severity is mapped to syslog levels
+                                (Info &rarr; info, Low &rarr; notice, Medium &rarr; warning, High &rarr; err).</p>
+                            <p><strong>User actions</strong> &mdash; login, logout, failed login / 2FA, and every change
+                                made in the panel (who, from which IP, what action, submitted fields).
+                                Passwords, OTP codes and file contents are never sent.</p>
+                            <p class="mb-0">Messages are JSON in the syslog message body, tagged with the app name.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

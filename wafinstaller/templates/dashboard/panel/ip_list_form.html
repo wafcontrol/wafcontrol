@@ -1,0 +1,134 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}{% if is_new %}New List{% else %}List {{ ip_list.name }}{% endif %} - Owasp Wafcontrol{% endblock %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}"
+                     style="white-space: pre-wrap;">{{ message }}</div>
+            {% endfor %}
+
+            <div class="row">
+                <div class="{% if is_new %}col-lg-8{% else %}col-lg-6{% endif %}">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">{% if is_new %}New List{% else %}Edit List{% endif %}</h4>
+                            </div>
+                            <a href="{% url 'wafinstaller:ip_lists' %}" class="btn btn-sm btn-secondary align-self-center">Back</a>
+                        </div>
+                        <div class="iq-card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+
+                                {% for field in form %}
+                                    {% if field.name != 'countries' and field.name != 'entries' %}
+                                        <div class="form-group">
+                                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                            {{ field }}
+                                            {% if field.help_text %}<small class="form-text text-muted">{{ field.help_text }}</small>{% endif %}
+                                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <div id="geo-section" class="form-group">
+                                    <label>Countries</label>
+                                    {% if form.geo_available %}
+                                        <input type="text" id="countryFilter" class="form-control form-control-sm mb-2"
+                                               placeholder="Filter countries (name or code)...">
+                                        <div id="countryBox" class="border rounded p-2" style="max-height: 280px; overflow-y: auto;">
+                                            <div class="row">
+                                                {% for choice in form.countries %}
+                                                    <div class="col-md-6 country-item">
+                                                        <div class="form-check">
+                                                            {{ choice.tag }}
+                                                            <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                                {{ choice.choice_label }} <small class="text-muted">({{ choice.data.value }})</small>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted"><span id="countryCount">0</span> selected.
+                                            Ranges come from the bundled GeoLite2 database.</small>
+                                    {% elif geo_available %}
+                                        <div class="alert alert-info mb-0">The GeoIP country index is being prepared
+                                            (about 30 seconds, once). Refresh this page in a moment.</div>
+                                    {% else %}
+                                        <div class="alert alert-warning mb-0">GeoIP database not found: geo lists are unavailable.</div>
+                                    {% endif %}
+                                    {% for error in form.countries.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="{{ form.entries.id_for_label }}">
+                                        {{ form.entries.label }}
+                                        <small class="text-muted geo-only">(optional, added to the countries)</small>
+                                    </label>
+                                    {{ form.entries }}
+                                    {% for error in form.entries.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                    <small class="text-muted d-block">One IPv4/IPv6 address or CIDR range per line.
+                                        Text after <code>#</code> is kept as a comment. Duplicates are removed.</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save &amp; Apply</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% if not is_new %}
+                    <div class="col-lg-6">
+                        <div class="iq-card">
+                            <div class="iq-card-header">
+                                <div class="iq-header-title">
+                                    <h4 class="card-title">How to use
+                                        {% if ip_list.is_geo %}<span class="badge badge-info">Geo</span>{% endif %}
+                                        {% if ip_list.is_allow %}<span class="badge badge-success">Allow</span>
+                                        {% else %}<span class="badge badge-danger">Deny</span>{% endif %}
+                                    </h4>
+                                </div>
+                            </div>
+                            <div class="iq-card-body">
+                                {% include 'dashboard/panel/_ip_list_guide.html' with servers=servers action=ip_list.action kind=ip_list.kind tabs='list' %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        (function () {
+            const kind = document.getElementById("{{ form.kind.id_for_label }}");
+            const geo = document.getElementById("geo-section");
+            const geoOnly = document.querySelectorAll(".geo-only");
+            function toggle() {
+                const isGeo = kind.value === "geo";
+                geo.style.display = isGeo ? "" : "none";
+                geoOnly.forEach(el => el.style.display = isGeo ? "" : "none");
+            }
+            kind.addEventListener("change", toggle);
+            toggle();
+
+            const box = document.getElementById("countryBox");
+            if (!box) return;
+            const count = document.getElementById("countryCount");
+            const update = () => count.textContent = box.querySelectorAll("input:checked").length;
+            box.addEventListener("change", update);
+            update();
+            document.getElementById("countryFilter").addEventListener("input", function () {
+                const q = this.value.trim().toLowerCase();
+                box.querySelectorAll(".country-item").forEach(el => {
+                    el.style.display = !q || el.textContent.toLowerCase().includes(q) ? "" : "none";
+                });
+            });
+        })();
+    </script>
+{% endblock %}

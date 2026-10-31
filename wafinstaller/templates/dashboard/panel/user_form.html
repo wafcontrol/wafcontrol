@@ -1,0 +1,73 @@
+{% extends 'dashboard/main/main.html' %}
+{% block title %}{% if is_new %}Add User{% else %}Edit User{% endif %} - Owasp Wafcontrol{% endblock %}
+
+{% block content %}
+    <div id="content-page" class="content-page">
+        <div class="container-fluid">
+
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+
+            <div class="row">
+                <div class="{% if is_new %}col-lg-8{% else %}col-lg-6{% endif %}">
+                    <div class="iq-card">
+                        <div class="iq-card-header d-flex justify-content-between">
+                            <div class="iq-header-title">
+                                <h4 class="card-title">
+                                    {% if is_new %}Add User{% else %}Edit User: {{ target.username }}{% endif %}
+                                </h4>
+                            </div>
+                            <a href="{% url 'wafinstaller:users' %}" class="btn btn-sm btn-secondary align-self-center">Back</a>
+                        </div>
+                        <div class="iq-card-body">
+                            <form method="post" novalidate>
+                                {% csrf_token %}
+                                {% include 'dashboard/panel/_form_fields.html' with form=form %}
+                                <button type="submit" name="update_user" class="btn btn-primary">
+                                    {% if is_new %}Create User{% else %}Save{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% if not is_new %}
+                    <div class="col-lg-6">
+                        <div class="iq-card">
+                            <div class="iq-card-header">
+                                <div class="iq-header-title"><h4 class="card-title">Set Password</h4></div>
+                            </div>
+                            <div class="iq-card-body">
+                                <form method="post" novalidate>
+                                    {% csrf_token %}
+                                    {% include 'dashboard/panel/_form_fields.html' with form=password_form %}
+                                    <button type="submit" name="set_password" class="btn btn-warning">Update Password</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="iq-card">
+                            <div class="iq-card-header">
+                                <div class="iq-header-title"><h4 class="card-title">Two-Factor Authentication</h4></div>
+                            </div>
+                            <div class="iq-card-body">
+                                {% if two_factor %}
+                                    <p><span class="badge badge-success">Enabled</span></p>
+                                    <p class="text-muted small">Reset if the user lost their authenticator device.
+                                        They can set it up again from Admin Setting.</p>
+                                    <form method="post" onsubmit="return confirm('Reset 2FA for {{ target.username|escapejs }}?');">
+                                        {% csrf_token %}
+                                        <button type="submit" name="reset_2fa" class="btn btn-danger">Reset 2FA</button>
+                                    </form>
+                                {% else %}
+                                    <p><span class="badge badge-light">Disabled</span></p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

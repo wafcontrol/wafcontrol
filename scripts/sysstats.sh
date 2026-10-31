@@ -10,7 +10,8 @@ disk_usage=$(df -h / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
 storage_free=$(df -h / | awk 'NR==2 {print $4}')
 total_processes=$(ps aux | wc -l)
 total_threads=$(ps -eLf | wc -l)
-total_handles=$(command -v lsof >/dev/null 2>&1 && lsof | wc -l || echo 0)
+# Allocated file handles from the kernel (lsof was very slow and could hang the stats task).
+total_handles=$(awk '{print $1}' /proc/sys/fs/file-nr 2>/dev/null || echo 0)
 
 cat <<EOF
 {

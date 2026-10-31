@@ -18,14 +18,14 @@
                             <!-- Show success or info messages -->
                             {% if messages %}
                                 {% for message in messages %}
-                                    <div class="alert alert-info">{{ message }}</div>
+                                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}" style="white-space: pre-wrap;">{{ message }}</div>
                                 {% endfor %}
                             {% endif %}
 
                             <p class="text-muted mb-3">
                                 Installed Version: <strong>{{ installed_version }}</strong> |
-                                Latest Version: <strong>{{ latest_version }}</strong> |
-                                Last Fetched: <strong>{{ fetched_at }}</strong>
+                                Latest Version: <strong>{{ latest_version|default:"Not fetched yet" }}</strong> |
+                                Last Fetched: <strong>{% if fetched_at == "N/A" %}Never{% else %}{{ fetched_at|date:"Y-m-d H:i" }}{% endif %}</strong>
                             </p>
                             <p class="text-muted mb-3">
                                 CRS versions are automatically checked every <strong>12 hours</strong>.

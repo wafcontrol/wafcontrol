@@ -11,16 +11,19 @@ app.conf.beat_schedule = {
     'update-dashboard-stats-every-1-minute': {
         'task': 'wafinstaller.tasks.update_dashboard_stats',
         'schedule': crontab(minute='*/1'),
+        'options': {'expires': 55},
     },
 
     # Separate schedules; each task self-skips if server kind mismatches.
     'update-waf-attacks-apache-every-1-minute': {
         'task': 'wafinstaller.tasks.update_waf_attacks_apache',
         'schedule': crontab(minute='*/1'),
+        'options': {'expires': 55},
     },
     'update-waf-attacks-nginx-every-1-minute': {
         'task': 'wafinstaller.tasks.update_waf_attacks_nginx',
         'schedule': crontab(minute='*/1'),
+        'options': {'expires': 55},
     },
 
     'delete-old-attacks-daily': {

@@ -50,7 +50,10 @@ MODSEC_KEY_DESCRIPTIONS = {
 }
 
 APP_KEYS = {
-    "AttackRetentionDays": {"default": "15", "description": "Number of days to retain WAF attack logs before auto deletion."}
+    "AttackRetentionDays": {"default": "15", "description": "Number of days to retain WAF attack logs before auto deletion."},
+    "AttackStoreRequestBody": {"default": "1", "description": "Store the request body of attacks (1 = yes, 0 = no). Needs SecAuditLogParts with C (or I)."},
+    "AttackStoreCookies": {"default": "1", "description": "Store request cookies of attacks (1 = yes, 0 = no). Cookies may contain session tokens."},
+    "AttackMaxBodyBytes": {"default": "16384", "description": "Maximum stored request body size in characters (longer bodies are truncated)."},
 }
 
 RULE_PATTERN = re.compile(

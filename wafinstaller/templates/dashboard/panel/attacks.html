@@ -85,6 +85,7 @@
                                     <tr>
                                         <th>#</th>
                                         <th>Time</th>
+                                        <th>Method</th>
                                         <th>IP</th>
                                         <th>Country</th>
                                         <th>Rule ID</th>
@@ -102,6 +103,7 @@
                                             <tr class="{{ attack.row_class }}">
                                                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                                                 <td>{{ attack.timestamp|date:"Y-m-d H:i:s" }}</td>
+                                                <td>{% if attack.request.method %}<span class="badge badge-dark">{{ attack.request.method }}</span>{% else %}-{% endif %}</td>
                                                 <td>{{ attack.ip }}</td>
                                                 <td>
                                                     {% if attack.flag and attack.flag != "xx" %}
@@ -128,7 +130,7 @@
                                                         </button>
                                                         <button type="button"
                                                                 class="btn btn-sm btn-outline-secondary btn-icon"
-                                                                onclick="navigator.clipboard.writeText(`{{ attack.uri }}`)">
+                                                                data-copy="{{ attack.uri }}" onclick="navigator.clipboard.writeText(this.dataset.copy)">
                                                             Copy
                                                         </button>
                                                     </div>
@@ -159,10 +161,19 @@
                                                                     <div class="mb-0"><strong>Message:</strong>
                                                                         <pre><code>{{ attack.message }}</code></pre>
                                                                     </div>
+                                                                    {% if attack.request_id %}
+                                                                        <hr>
+                                                                        <div class="attack-request" data-url="{% url 'wafinstaller:attack_request' attack.pk %}">
+                                                                            <span class="text-muted">Loading request details...</span>
+                                                                        </div>
+                                                                    {% else %}
+                                                                        <hr><p class="text-muted small mb-0">No request details stored for this attack
+                                                                            (recorded before this feature, or the audit log has no request sections).</p>
+                                                                    {% endif %}
                                                                 </div>
                                                                 <div class="modal-footer">
                                                                     <button type="button" class="btn btn-light"
-                                                                            onclick="navigator.clipboard.writeText(`{{ attack.uri }}`)">
+                                                                            data-copy="{{ attack.uri }}" onclick="navigator.clipboard.writeText(this.dataset.copy)">
                                                                         Copy URI
                                                                     </button>
                                                                     <button type="button" class="btn btn-secondary"
@@ -188,7 +199,7 @@
                                         {% endwith %}
                                     {% empty %}
                                         <tr>
-                                            <td colspan="11" class="text-muted text-center">No attacks found in selected
+                                            <td colspan="12" class="text-muted text-center">No attacks found in selected
                                                 range.
                                             </td>
                                         </tr>
@@ -248,4 +259,8 @@
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block js %}
+    {% include 'dashboard/panel/_attack_request_js.html' %}
 {% endblock %}

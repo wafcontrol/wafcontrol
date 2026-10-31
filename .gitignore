@@ -25,3 +25,4 @@ __pycache__/
 celerybeat-schedule
 celerybeat-schedule-shm
 celerybeat-schedule-wal
+geo/.cache/
