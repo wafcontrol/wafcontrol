@@ -20,6 +20,8 @@ __pycache__/
 
 # Django migrations (all apps)
 **/migrations/
+# Versioned: indexes built without blocking writes (see wafinstaller/db_indexes/apps.py)
+!wafinstaller/db_indexes/migrations/
 
 # Celery Beat scheduler files
 celerybeat-schedule

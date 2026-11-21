@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 
     # My apps
     'wafinstaller',
+    'wafinstaller.db_indexes',
 
 ]
 
