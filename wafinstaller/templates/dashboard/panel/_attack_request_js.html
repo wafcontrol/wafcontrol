@@ -1,0 +1,79 @@
+<script>
+    // Lazily load the stored HTTP request (method, headers, cookies, body) when a details window opens.
+    // Everything is inserted with textContent: request data is attacker-controlled.
+    (function () {
+        function el(tag, cls, text) {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+
+        function section(title, content, copyText) {
+            const wrap = el("div", "mb-2");
+            const head = el("div", "d-flex justify-content-between align-items-center");
+            head.appendChild(el("strong", "", title));
+            if (copyText) {
+                const btn = el("button", "btn btn-sm btn-link p-0", "Copy");
+                btn.type = "button";
+                btn.addEventListener("click", () => navigator.clipboard.writeText(copyText));
+                head.appendChild(btn);
+            }
+            wrap.appendChild(head);
+            wrap.appendChild(content);
+            return wrap;
+        }
+
+        function pre(text) {
+            const p = el("pre", "bg-light p-2 rounded small mb-0");
+            p.style.maxHeight = "260px";
+            p.style.overflow = "auto";
+            p.style.whiteSpace = "pre-wrap";
+            p.style.wordBreak = "break-all";
+            p.textContent = text;
+            return p;
+        }
+
+        function table(obj) {
+            const t = el("table", "table table-sm table-bordered small mb-0");
+            Object.keys(obj).forEach(k => {
+                const tr = el("tr");
+                const th = el("th", "text-nowrap", k);
+                th.style.width = "30%";
+                const td = el("td", "", obj[k]);
+                td.style.wordBreak = "break-all";
+                tr.appendChild(th);
+                tr.appendChild(td);
+                t.appendChild(tr);
+            });
+            return t;
+        }
+
+        function render(box, d) {
+            box.textContent = "";
+            box.appendChild(section("Method", el("div", "", (d.method || "-") + (d.protocol ? "  (" + d.protocol + ")" : ""))));
+            box.appendChild(section("User-Agent", pre(d.user_agent || "-"), d.user_agent));
+            const headers = d.headers || {};
+            box.appendChild(section("Headers (" + Object.keys(headers).length + ")",
+                Object.keys(headers).length ? table(headers) : el("div", "text-muted", "-"),
+                Object.entries(headers).map(([k, v]) => k + ": " + v).join("\n")));
+            const cookies = d.cookies || {};
+            box.appendChild(section("Cookies (" + Object.keys(cookies).length + ")",
+                Object.keys(cookies).length ? table(cookies) : el("div", "text-muted", "-"),
+                Object.entries(cookies).map(([k, v]) => k + "=" + v).join("; ")));
+            const bodyTitle = "Body" + (d.body_truncated ? " (truncated)" : "");
+            box.appendChild(section(bodyTitle, d.body ? pre(d.body) : el("div", "text-muted", "-"), d.body));
+        }
+
+        $(document).on("show.bs.modal", ".modal", function () {
+            const box = this.querySelector(".attack-request[data-url]");
+            if (!box || box.dataset.loaded) return;
+            box.dataset.loaded = "1";
+            fetch(box.dataset.url, {credentials: "same-origin"})
+                .then(r => r.json())
+                .then(d => d.available ? render(box, d)
+                    : (box.textContent = "No request details stored for this attack."))
+                .catch(err => { box.textContent = "Failed to load request details: " + err; delete box.dataset.loaded; });
+        });
+    })();
+</script>

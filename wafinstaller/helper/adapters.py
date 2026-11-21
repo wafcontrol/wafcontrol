@@ -38,7 +38,7 @@ def _run_basic_script():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     script = os.path.join(os.path.dirname(base_dir), "scripts", "basic.sh")
     try:
-        out = subprocess.check_output(["/bin/bash", script], text=True, stderr=subprocess.STDOUT)
+        out = subprocess.check_output(["/bin/bash", script], text=True, stderr=subprocess.STDOUT, timeout=20)
         return json.loads(out)
     except Exception:
         return {"server": "none", "waf": {"version": ""}}

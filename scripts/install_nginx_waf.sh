@@ -219,6 +219,25 @@ done
 sed -i -E 's/^\s*SecRuleEngine\s+DetectionOnly/SecRuleEngine On/i' "$MDIR/modsecurity.conf" || true
 grep -qE '^\s*SecRuleEngine\s+' "$MDIR/modsecurity.conf" || echo "SecRuleEngine On" >> "$MDIR/modsecurity.conf"
 
+# The audit log is written by nginx *worker* processes (not root). If they cannot create it,
+# ModSecurity silently logs nothing and WafControl only sees error.log (no request details).
+ensure_audit_log_writable() {
+  local conf="$MDIR/modsecurity.conf" audit user
+  audit="$(awk '/^[[:space:]]*SecAuditLog[[:space:]]+/ {gsub(/"/, "", $2); print $2; exit}' "$conf" 2>/dev/null)"
+  [[ -n "$audit" ]] || return 0
+  user="$(awk '/^[[:space:]]*user[[:space:]]+/ {gsub(/;/, "", $2); print $2; exit}' /etc/nginx/nginx.conf 2>/dev/null)"
+  if [[ -z "$user" ]]; then
+    for u in www-data nginx; do id "$u" >/dev/null 2>&1 && { user="$u"; break; }; done
+  fi
+  [[ -n "$user" ]] || return 0
+  mkdir -p "$(dirname "$audit")"
+  touch "$audit"
+  chown "$user":adm "$audit" 2>/dev/null || chown "$user" "$audit"
+  chmod 640 "$audit"
+  say "Audit log $audit is writable by nginx workers ($user)."
+}
+ensure_audit_log_writable
+
 MAIN="$MDIR/main.conf"
 if [[ ! -f "$MAIN" ]]; then
   { echo "# WAFCONTROL main config"; echo "Include $MDIR/modsecurity.conf"; } > "$MAIN"
@@ -289,14 +308,9 @@ fi
 for f in REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf RESPONSE-999-EXCLUSION-RULES-AFTER-CRS.conf; do
   [[ -f "$CRS_DIR/rules/$f" ]] || { [[ -f "$CRS_DIR/rules/${f}.example" ]] && cp "$CRS_DIR/rules/$f.example" "$CRS_DIR/rules/${f}" || true; }
 done
-EXCL="$CRS_DIR/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf"
-if ! grep -q '/crs/rules/save/' "$EXCL" 2>/dev/null; then
-  cat >> "$EXCL" <<'EOR'
-# WAF dashboard exclusions
-SecRule REQUEST_URI "@beginsWith /crs/rules/save/"        "id:1500010,phase:1,nolog,pass,ctl:ruleEngine=Off"
-SecRule REQUEST_URI "@beginsWith /dashboard/crs/settings/" "id:1500011,phase:1,nolog,pass,ctl:ruleEngine=Off"
-EOR
-fi
+# Dashboard exclusions are scoped to the panel vhost (scripts/panel_waf_exclusions.sh), never global:
+# a global REQUEST_URI exclusion turned the WAF off for those paths on every protected site.
+sed -i -E '/id:15000(10|11)\b/d; /^# (WAF dashboard exclusions|Exclude WAF dashboard endpoints)$/d' "$CRS_DIR/rules/REQUEST-900-EXCLUSION-RULES-BEFORE-CRS.conf" 2>/dev/null || true
 sed -i '/Include .*crs-setup.conf/d' "$MAIN" || true
 sed -i '/Include .*rules\/\*.conf/d' "$MAIN" || true
 {
@@ -382,6 +396,9 @@ NGX
   state_append_array CREATED_FILES "$VHOST"
   say "App vhost written: $VHOST (port ${HTTP_PORT})"
 fi
+
+# Panel exclusions, scoped to the panel vhost only (config text would otherwise be blocked by CRS).
+bash "$(dirname "${BASH_SOURCE[0]}")/panel_waf_exclusions.sh" || warn "Could not apply panel WAF exclusions; run scripts/panel_waf_exclusions.sh."
 
 # 7) Test & reload
 if nginx -t; then

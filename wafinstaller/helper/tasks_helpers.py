@@ -24,6 +24,7 @@ def detect_server_kind() -> str:
             stderr=subprocess.PIPE,
             text=True,
             check=False,
+            timeout=20,
         )
         # basic.sh should print a JSON like {"server":"nginx"} to stdout
         raw = (res.stdout or "").strip()

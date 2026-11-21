@@ -149,10 +149,47 @@
                     </li>
 
 
+                    <!-- Web server config (only for installed servers) -->
+                    {% if nginx_installed %}
+                    <li class="{% if request.resolver_match.url_name == 'server_conf' and request.resolver_match.kwargs.server == 'nginx' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:server_conf' 'nginx' %}" class="iq-waves-effect">
+                            <i class="las la-server iq-arrow-left"></i><span>Nginx Config</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if apache_installed %}
+                    <li class="{% if request.resolver_match.url_name == 'server_conf' and request.resolver_match.kwargs.server == 'apache' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:server_conf' 'apache' %}" class="iq-waves-effect">
+                            <i class="las la-feather-alt iq-arrow-left"></i><span>Apache Config</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
                     <!-- Owc Setting -->
                     <li class="{% if request.resolver_match.url_name == 'app_settings' %}active{% endif %}">
                         <a href="{% url 'wafinstaller:app_settings' %}" class="iq-waves-effect">
                             <i class="las la-tools iq-arrow-left"></i><span>Owc Setting</span>
+                        </a>
+                    </li>
+
+                    <!-- IP Lists -->
+                    <li class="{% if request.resolver_match.url_name in 'ip_lists ip_list_add ip_list_edit' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:ip_lists' %}" class="iq-waves-effect">
+                            <i class="las la-list-alt iq-arrow-left"></i><span>IP Lists</span>
+                        </a>
+                    </li>
+
+                    <!-- Syslog -->
+                    <li class="{% if request.resolver_match.url_name == 'syslog_config' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:syslog_config' %}" class="iq-waves-effect">
+                            <i class="las la-satellite-dish iq-arrow-left"></i><span>Syslog Config</span>
+                        </a>
+                    </li>
+
+                    <!-- Users Management -->
+                    <li class="{% if request.resolver_match.url_name in 'users user_add user_edit' %}active{% endif %}">
+                        <a href="{% url 'wafinstaller:users' %}" class="iq-waves-effect">
+                            <i class="las la-users iq-arrow-left"></i><span>Users Management</span>
                         </a>
                     </li>
 
@@ -174,7 +211,7 @@
                     <strong>Owasp WafControl</strong>
                 </div>
                 <small class="mt-1">
-                    <i class="las la-code-branch me-1"></i> OWC V1.0.0
+                    <i class="las la-code-branch me-1"></i> OWC V{{ app_version }}
                 </small>
             </div>
         </div>
@@ -279,7 +316,7 @@
                     </ul>
                 </div>
                 <div class="col-lg-6 text-right">
-                    Owasp Waf Control(v1.0.0). Built on top of the OWASP CRS project.thanks to the CRS community.
+                    Owasp Waf Control(v{{ app_version }}). Built on top of the OWASP CRS project.thanks to the CRS community.
                 </div>
             </div>
         </div>

@@ -63,8 +63,12 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'wafinstaller.middleware.SyslogAuditMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# WafControl release shown in the panel (sidebar + footer)
+APP_VERSION = '1.1.0'
 
 ROOT_URLCONF = 'WafControl.urls'
 
@@ -79,6 +83,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'wafinstaller.context_processors.server_state',
+                'wafinstaller.context_processors.app_info',
             ],
         },
     },
@@ -160,13 +166,16 @@ MEDIA_ROOT = "StaticsFiles/media"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# Overridable for containers, where Redis runs as a separate service.
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=CELERY_BROKER_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-broker_connection_retry_on_startup = True
-CELERYD_TASK_TIME_LIMIT = 300
-CELERYD_TASK_SOFT_TIME_LIMIT = 250
+# A stuck task must not hold a worker slot forever (that starves the per-minute attack parser).
+# With namespace='CELERY' these are the names Celery reads (CELERYD_* were silently ignored).
+CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_SOFT_TIME_LIMIT = 250
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 
 # Security

@@ -1,0 +1,136 @@
+{# Usage guide. Context: servers (list of {key,label,path,variable,installed}), action ('allow'|'deny'|'' for both), #}
+{# kind ('ip'|'geo'), tabs (unique id prefix when included more than once). #}
+<ul class="nav nav-tabs" role="tablist">
+    {% for s in servers %}
+        <li class="nav-item">
+            <a class="nav-link {% if forloop.first %}active{% endif %}" data-toggle="tab" href="#guide-{{ tabs }}-{{ s.key }}" role="tab">
+                {{ s.label }}
+                {% if s.installed %}<span class="badge badge-success ml-1">installed</span>{% endif %}
+            </a>
+        </li>
+    {% endfor %}
+</ul>
+<div class="tab-content pt-3">
+    {% for s in servers %}
+        <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="guide-{{ tabs }}-{{ s.key }}" role="tabpanel">
+
+            {% if s.key == 'nginx' and kind == 'geo' %}
+                <p class="mb-2">Variable: <code>${{ s.variable }}</code> &mdash; <code>1</code> when the client is in the
+                    list, otherwise <code>0</code>. WafControl declares it automatically in
+                    <code>/etc/nginx/conf.d/wafcontrol-geo-&lt;name&gt;.conf</code> using nginx's built-in
+                    <code>geo</code> module (fast even for large countries); you only add the <code>if</code> line.</p>
+                {% if action != 'allow' %}
+                    <h6 class="mt-3">Deny geo list &mdash; block these countries</h6>
+<pre class="bg-dark text-white p-3 rounded small">server {
+    listen 80;
+    server_name example.com;
+
+    if (${{ s.variable }}) { return 403; }
+    ...
+}</pre>
+                {% endif %}
+                {% if action != 'deny' %}
+                    <h6 class="mt-3">Allow geo list &mdash; only these countries can access</h6>
+<pre class="bg-dark text-white p-3 rounded small">location /admin/ {
+    if (${{ s.variable }} = 0) { return 403; }
+
+    proxy_pass http://127.0.0.1:8080;
+}</pre>
+                {% endif %}
+                <p class="small text-muted mb-1">Put the line in <code>server</code> to protect a whole site, or in a
+                    <code>location</code> for a path. <code>if (...) {&nbsp;return 403;&nbsp;}</code> is the safe way to use
+                    <code>if</code> in nginx. Several lists can be combined with several <code>if</code> lines.</p>
+                <p class="small text-muted mb-0">Behind a proxy/CDN, configure <code>set_real_ip_from</code> /
+                    <code>real_ip_header</code> so nginx sees the real client IP.</p>
+
+            {% elif s.key == 'nginx' %}
+                <p class="mb-2">Include file: <code>{{ s.path }}</code></p>
+                {% if action != 'deny' %}
+                    <h6 class="mt-3">Allow list &mdash; only these IPs can access</h6>
+                    <p class="small text-muted mb-1">Add the <code>include</code> line, then <code>deny all;</code>
+                        right after it. Nginx checks rules in order and stops at the first match, so the include
+                        must come <strong>before</strong> <code>deny all;</code>. Works inside
+                        <code>http</code>, <code>server</code> or <code>location</code>.</p>
+<pre class="bg-dark text-white p-3 rounded small">location /admin/ {
+    include {{ s.path }};
+    deny all;
+
+    proxy_pass http://127.0.0.1:8080;
+}</pre>
+                {% endif %}
+                {% if action != 'allow' %}
+                    <h6 class="mt-3">Deny list &mdash; block these IPs, allow everyone else</h6>
+                    <p class="small text-muted mb-1">Add only the <code>include</code> line; everyone not in the
+                        list is allowed. Put it in <code>server</code> to protect a whole site, or in a
+                        <code>location</code> for a path.</p>
+<pre class="bg-dark text-white p-3 rounded small">server {
+    listen 80;
+    server_name example.com;
+
+    include {{ s.path }};
+    ...
+}</pre>
+                {% endif %}
+                {% if not action %}
+                    <h6 class="mt-3">Both together</h6>
+                    <p class="small text-muted mb-1">Deny list first, then allow list, then <code>deny all;</code>.</p>
+<pre class="bg-dark text-white p-3 rounded small">include /etc/nginx/wafcontrol/iplists/blocked.conf;
+include /etc/nginx/wafcontrol/iplists/office.conf;
+deny all;</pre>
+                {% endif %}
+                <p class="small text-muted mb-1"><strong>Note:</strong> <code>return</code> runs before
+                    allow/deny checks, so a <code>location</code> that only does <code>return ...;</code> is not
+                    protected. Use it with <code>proxy_pass</code>, <code>root</code> or <code>try_files</code>.</p>
+                <p class="small text-muted mb-0">Behind a proxy/CDN, configure <code>set_real_ip_from</code> /
+                    <code>real_ip_header</code> so nginx sees the real client IP.</p>
+
+            {% else %}
+                <p class="mb-2">Include file: <code>{{ s.path }}</code></p>
+                {% if kind == 'geo' %}
+                    <p class="small text-muted">Apache has no built-in country matching, so WafControl expands the
+                        countries into their IP ranges inside this file. It is used exactly like an IP list. Large
+                        countries produce many ranges that Apache checks one by one; prefer nginx for big geo lists.</p>
+                {% endif %}
+                {% if action != 'deny' %}
+                    <h6 class="mt-3">Allow list &mdash; only these {% if kind == 'geo' %}countries{% else %}IPs{% endif %} can access</h6>
+                    <p class="small text-muted mb-1">Wrap the <code>Include</code> line in <code>&lt;RequireAny&gt;</code>.
+                        Anyone not matching is refused (403). Works inside <code>&lt;VirtualHost&gt;</code>,
+                        <code>&lt;Directory&gt;</code> or <code>&lt;Location&gt;</code>.</p>
+<pre class="bg-dark text-white p-3 rounded small">&lt;Location "/admin/"&gt;
+    &lt;RequireAny&gt;
+        Include {{ s.path }}
+    &lt;/RequireAny&gt;
+&lt;/Location&gt;</pre>
+                {% endif %}
+                {% if action != 'allow' %}
+                    <h6 class="mt-3">Deny list &mdash; block these {% if kind == 'geo' %}countries{% else %}IPs{% endif %}, allow everyone else</h6>
+                    <p class="small text-muted mb-1"><code>Require not ip</code> only works inside
+                        <code>&lt;RequireAll&gt;</code> together with <code>Require all granted</code>.</p>
+<pre class="bg-dark text-white p-3 rounded small">&lt;Location "/"&gt;
+    &lt;RequireAll&gt;
+        Require all granted
+        Include {{ s.path }}
+    &lt;/RequireAll&gt;
+&lt;/Location&gt;</pre>
+                {% endif %}
+                {% if not action and kind != 'geo' %}
+                    <h6 class="mt-3">Both together</h6>
+<pre class="bg-dark text-white p-3 rounded small">&lt;RequireAll&gt;
+    Include /etc/apache2/wafcontrol/iplists/blocked.conf
+    &lt;RequireAny&gt;
+        Include /etc/apache2/wafcontrol/iplists/office.conf
+    &lt;/RequireAny&gt;
+&lt;/RequireAll&gt;</pre>
+                {% endif %}
+                <p class="small text-muted mb-0">Behind a proxy/CDN, enable <code>mod_remoteip</code> so Apache
+                    sees the real client IP.</p>
+            {% endif %}
+
+            {% if s.installed %}
+                <a href="{% url 'wafinstaller:server_conf' s.key %}" class="btn btn-sm btn-outline-primary mt-3">
+                    Open {{ s.label }} Config to add the line
+                </a>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>

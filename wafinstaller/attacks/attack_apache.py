@@ -3,6 +3,9 @@ import os, re, io, glob, stat, json, hashlib, time
 from ipaddress import ip_address
 from typing import Dict, List, Optional, Tuple
 
+from wafinstaller.attacks.errorlog_blocks import blocks_from_error_lines
+from wafinstaller.attacks.request_details import json_request_sections
+
 JSON_TXN_KEYS = ("transaction", "messages")
 
 SECTION_A_HEADER = re.compile(r'^\[(?P<ts>[^]]+)\]\s+(?P<uid>\S+)\s+(?P<src>[0-9A-Fa-f:.]+)\s+(?P<src_port>\d+)\s+(?P<dst>[0-9A-Fa-f:.]+)\s+(?P<dst_port>\d+)\s*$')
@@ -269,6 +272,15 @@ def _json_to_pseudoblock(obj: dict) -> str:
     rid = hashlib.sha1(uid.encode()).hexdigest()[:8]
     lines.append(f"---{rid}---A--")
     lines.append(f"[{t.get('time','')}] {uid} {src or '-'} {sport or '0'} {dst or '-'} {dport or '0'}")
+    # Request line + headers (B) and body (C), so request details work with JSON audit logs too.
+    lines.append(f"---{rid}---B--")
+    lines.extend(json_request_sections(req))
+    req_body = req.get("body")
+    if isinstance(req_body, list):
+        req_body = "".join(str(x) for x in req_body)
+    if req_body:
+        lines.append(f"---{rid}---C--")
+        lines.append(str(req_body))
     lines.append(f"---{rid}---H--")
     for m in msgs:
         rule = m.get("details", {}) or {}
@@ -460,30 +472,7 @@ def blocks_from_errorlogs(paths: List[str], tail_n: int = 12000) -> List[str]:
     out = []
     for p in paths:
         if not p or not os.path.exists(p): continue
-        lines = tail_lines(p, tail_n)
-        group = {}
-        for ln in lines:
-            if "ModSecurity:" not in ln: continue
-            m = ERROR_H_LINE.search(ln)
-            if not m: continue
-            rid = m.group(1) or ""
-            msg = m.group(3) or ""
-            uri = m.group(5) or ""
-            uid = m.group(7) or hashlib.sha1(ln.encode()).hexdigest()[:10]
-            key = uid
-            group.setdefault(key, []).append((rid, msg, uri, uid, ln))
-        for uid, items in group.items():
-            rid = hashlib.sha1(uid.encode()).hexdigest()[:8]
-            lines_out = [f"---{rid}---H--"]
-            uri = ""
-            for r, mmsg, u, u2, raw in items:
-                uri = uri or u
-                if uri:
-                    lines_out.append('ModSecurity: Warning. [id "%s"] [msg "%s"] [uri "%s"] [unique_id "%s"]' % (r, mmsg, uri, uid))
-                else:
-                    lines_out.append('ModSecurity: Warning. [id "%s"] [msg "%s"] [unique_id "%s"]' % (r, mmsg, uid))
-            lines_out.append(f"---{rid}---Z--")
-            out.append("\n".join(lines_out))
+        out.extend(blocks_from_error_lines(tail_lines(p, tail_n)))
     return out
 
 def discover_all_paths():
